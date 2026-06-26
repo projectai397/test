@@ -9,6 +9,7 @@ import {
   timelineToPromise,
 } from '../../utils/cricketProcedural';
 import { scenePositions, animationTimings } from '../../utils/animationTimings';
+import { PITCH_FACING } from '../../utils/playerFacing';
 import { animatePosition, cancelMotionsFor, waitUntilReady } from '../../utils/motionRunner';
 
 export interface AnimationCompletion {
@@ -31,7 +32,7 @@ interface BowlerControllerProps {
 
 function setBowlerHome(group: THREE.Group) {
   group.position.set(scenePositions.bowlerStartX, 0, scenePositions.bowlerStartZ);
-  group.rotation.set(0, Math.PI, 0);
+  group.rotation.set(0, PITCH_FACING.towardStriker, 0);
 }
 
 export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControllerProps>(
@@ -71,7 +72,7 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
 
         await animatePosition(
           group,
-          { x: scenePositions.bowlerCreaseX, z: 0, y: 0 },
+          { x: scenePositions.bowlerCreaseX, z: scenePositions.bowlerStartZ, y: 0 },
           animationTimings.runUp,
           { ease: 'power1Out', yBob: { amplitude: 0.12, period: 0.18 } },
         );

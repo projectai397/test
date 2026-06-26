@@ -48,7 +48,7 @@ export const CAMERA_PRESETS: CameraPresetConfig[] = [
     id: 'behind_bowler',
     label: 'Behind Bowler',
     shortLabel: 'Bowler',
-    position: { x: 22, y: 2.8, z: 4 },
+    position: { x: scenePositions.bowlerStartX + 2, y: 2.8, z: 4 },
     lookAt: strikerCrease,
   },
   {

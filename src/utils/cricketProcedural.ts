@@ -79,7 +79,7 @@ export function buildBowlingTimeline(
 
   tl.to(
     group.position,
-    { x: scenePositions.bowlerCreaseX - 2.5, duration: 0.65, ease: 'power1.out' },
+    { x: scenePositions.bowlerCreaseX - 0.5, duration: 0.65, ease: 'power1.out' },
     0.25,
   );
 
@@ -148,6 +148,6 @@ export function timelineToPromise(tl: gsap.core.Timeline): Promise<void> {
   });
 }
 
-export const MIN_RUN_UP_MS = 2000;
-export const MIN_BOWL_MS = 800;
-export const MIN_BAT_MS = 600;
+export const MIN_RUN_UP_MS = 1800;
+export const MIN_BOWL_MS = 700;
+export const MIN_BAT_MS = 500;

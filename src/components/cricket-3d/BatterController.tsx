@@ -9,6 +9,7 @@ import {
   timelineToPromise,
 } from '../../utils/cricketProcedural';
 import { scenePositions } from '../../utils/animationTimings';
+import { PITCH_FACING } from '../../utils/playerFacing';
 import { animatePosition, cancelMotionsFor, waitUntilReady } from '../../utils/motionRunner';
 import type { AnimationCompletion } from './BowlerController';
 
@@ -26,7 +27,7 @@ interface BatterControllerProps {
 
 function setBatterHome(group: THREE.Group) {
   group.position.set(scenePositions.strikerEndX, 0, 0);
-  group.rotation.set(0, Math.PI / 2, 0);
+  group.rotation.set(0, PITCH_FACING.towardBowler, 0);
 }
 
 export const BatterController = forwardRef<BatterControllerHandle, BatterControllerProps>(
@@ -78,7 +79,7 @@ export const BatterController = forwardRef<BatterControllerHandle, BatterControl
         const rest = player.beginProcedural();
         const batRest = bat.rotation.clone();
 
-        const stepPromise = animatePosition(group, { z: 0.35 }, 0.22, { ease: 'power2Out' });
+        const stepPromise = animatePosition(group, { x: 0.35 }, 0.22, { ease: 'power2Out' });
         const tl = buildSixShotTimeline(player.getParts(), rest, bat, batRest);
         timelineRef.current = tl;
 

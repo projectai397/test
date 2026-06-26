@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { PlayerModel, type PlayerModelHandle } from './PlayerModel';
 import { buildWatchBallTimeline } from '../../utils/cricketProcedural';
 import { scenePositions } from '../../utils/animationTimings';
+import { PITCH_FACING } from '../../utils/playerFacing';
 
 export interface NonStrikerControllerHandle {
   playWatchBall: () => void;
@@ -16,7 +17,7 @@ interface NonStrikerControllerProps {
 
 function setNonStrikerHome(group: THREE.Group) {
   group.position.set(scenePositions.nonStrikerEndX, 0, scenePositions.nonStrikerOffsetZ);
-  group.rotation.set(0, -Math.PI / 2, 0);
+  group.rotation.set(0, PITCH_FACING.towardStriker, 0);
 }
 
 export const NonStrikerController = forwardRef<

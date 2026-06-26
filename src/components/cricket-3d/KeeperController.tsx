@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { PlayerModel, type PlayerModelHandle } from './PlayerModel';
 import { buildKeeperCrouchTimeline } from '../../utils/cricketProcedural';
 import { scenePositions } from '../../utils/animationTimings';
+import { PITCH_FACING } from '../../utils/playerFacing';
 
 export interface KeeperControllerHandle {
   playCollect: () => Promise<void>;
@@ -22,7 +23,7 @@ function setKeeperHome(group: THREE.Group) {
     0,
     scenePositions.keeperOffsetZ,
   );
-  group.rotation.set(0, -Math.PI / 2, 0);
+  group.rotation.set(0, PITCH_FACING.towardBowler, 0);
 }
 
 export const KeeperController = forwardRef<KeeperControllerHandle, KeeperControllerProps>(
