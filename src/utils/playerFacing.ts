@@ -7,6 +7,6 @@ export const PITCH_FACING = {
   towardStriker: Math.PI / 2,
   /** Face toward the bowler end (+X) — batter and keeper. */
   towardBowler: -Math.PI / 2,
-  /** Square-leg umpire at striker end, leg side — watches down the pitch toward the bowler. */
-  squareLegUmpire: -Math.PI / 2,
+  /** Main umpire at bowler's end — faces down the pitch toward the striker. */
+  bowlersEndUmpire: Math.PI / 2,
 } as const;

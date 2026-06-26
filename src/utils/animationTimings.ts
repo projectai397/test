@@ -39,9 +39,8 @@ export const scenePositions = {
   keeperOffsetZ: 0.3,
   /** Non-striker waits at the bowler end, off the pitch centre line. */
   nonStrikerOffsetZ: -0.8,
-  /** Square-leg umpire — leg side, in line with striker's end (outside the pitch). */
-  umpireX: 1.0,
-  umpireZ: -5.5,
+  /** Main umpire (bowler's end): metres behind bowler-end stumps, centred on the pitch. */
+  umpireBehindStumps: 1.8,
   boundaryRadius: 45,
 } as const;
 

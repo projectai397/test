@@ -12,6 +12,30 @@ function mat(color: string) {
   return new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.05 });
 }
 
+function hideHair(root: THREE.Object3D) {
+  root.traverse((obj) => {
+    if (!(obj instanceof THREE.Mesh)) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    if (mats.some((m) => /hair/i.test(m.name ?? ''))) obj.visible = false;
+  });
+}
+
+/** Classic wide-brim cricket umpire hat (round crown + flat circular brim). */
+function attachWideBrimHat(head: THREE.Object3D, color: string) {
+  const hatMat = mat(color);
+  const g = new THREE.Group();
+  g.name = 'UmpireWideBrimHat';
+  g.position.set(0, 0.11, 0);
+  const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.105, 0.065, 16), hatMat);
+  crown.position.y = 0.02;
+  crown.castShadow = true;
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.014, 24), hatMat);
+  brim.position.y = -0.01;
+  brim.castShadow = true;
+  g.add(crown, brim);
+  head.add(g);
+}
+
 interface GearOptions {
   minimalGear?: boolean;
   teamColor?: string;
@@ -43,13 +67,7 @@ export function attachCricketGear(
   const showCap = options?.showCap ?? (!minimal && role === 'bowler');
   const showGloves = role === 'keeper' || role === 'batter' || role === 'bowler';
 
-  if (showCap) {
-    root.traverse((obj) => {
-      if (!(obj instanceof THREE.Mesh)) return;
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-      if (mats.some((m) => /hair/i.test(m.name ?? ''))) obj.visible = false;
-    });
-  }
+  if (showCap) hideHair(root);
 
   if (bones.head && showHelmet) {
     const g = new THREE.Group();
@@ -62,7 +80,9 @@ export function attachCricketGear(
     bones.head.add(g);
   }
 
-  if (bones.head && showCap) {
+  if (bones.head && showCap && role === 'umpire') {
+    attachWideBrimHat(bones.head, '#ffffff');
+  } else if (bones.head && showCap) {
     const g = new THREE.Group();
     g.name = 'CricketCap';
     g.position.set(0, 0.12, 0);

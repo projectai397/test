@@ -9,8 +9,6 @@ export type FieldPositionPreset =
   | 'fineLeg'
   | 'thirdMan';
 
-export type UmpireFacingPreset = 'squareLeg';
-
 export interface FielderConfig {
   name: string;
   position: FieldPositionPreset | string;
@@ -38,8 +36,6 @@ export interface UmpireConfig {
   name: string;
   kitColor: string;
   showCap?: boolean;
-  position: { x: number; y: number; z: number };
-  facing: UmpireFacingPreset;
 }
 
 export interface MatchConfig {
@@ -130,9 +126,6 @@ export function validateMatchConfig(raw: unknown): MatchConfig {
   if (!isRecord(teamB.nonStriker)) throw new Error('Match config: teams.teamB.nonStriker is required');
   if (!isRecord(raw.umpire)) throw new Error('Match config: umpire is required');
 
-  const umpirePos = raw.umpire.position;
-  if (!isRecord(umpirePos)) throw new Error('Match config: umpire.position is required');
-
   const config: MatchConfig = {
     teams: {
       teamA: {
@@ -165,12 +158,6 @@ export function validateMatchConfig(raw: unknown): MatchConfig {
           ? requireHexColor(raw.umpire, 'kitColor', 'umpire')
           : '#ffffff',
       showCap: raw.umpire.showCap !== false,
-      position: {
-        x: typeof umpirePos.x === 'number' ? umpirePos.x : 1.0,
-        y: typeof umpirePos.y === 'number' ? umpirePos.y : 0,
-        z: typeof umpirePos.z === 'number' ? umpirePos.z : -5.5,
-      },
-      facing: 'squareLeg',
     },
   };
 

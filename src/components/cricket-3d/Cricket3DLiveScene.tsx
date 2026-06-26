@@ -157,7 +157,6 @@ function CricketScene({
         jerseyColor={umpire.kitColor}
         showCap={umpire.showCap}
         modelUrl={modelUrl}
-        position={umpire.position}
       />
 
       <Physics gravity={[0, -9.81, 0]} timeStep="vary" interpolate={true}>

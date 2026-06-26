@@ -9,22 +9,14 @@ export interface ResolvedUmpirePlacement {
 }
 
 /**
- * Square-leg field umpire — leg side, in line with the striker's end (not at the bowling end).
- * Faces down the pitch toward the bowler.
+ * Main umpire at the bowler's end — centred behind the stumps, in line with the pitch
+ * (as in real cricket). Faces down the pitch toward the striker.
  */
-export function resolveUmpirePlacement(position?: {
-  x: number;
-  y: number;
-  z: number;
-}): ResolvedUmpirePlacement {
-  const x = position?.x ?? scenePositions.umpireX;
-  const y = position?.y ?? 0;
-  const z = position?.z ?? scenePositions.umpireZ;
-
+export function resolveUmpirePlacement(): ResolvedUmpirePlacement {
   return {
-    x,
-    y,
-    z,
-    facingY: PITCH_FACING.squareLegUmpire,
+    x: scenePositions.nonStrikerEndX + scenePositions.umpireBehindStumps,
+    y: 0,
+    z: 0,
+    facingY: PITCH_FACING.bowlersEndUmpire,
   };
 }

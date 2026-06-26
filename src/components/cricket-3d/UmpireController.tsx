@@ -13,7 +13,6 @@ interface UmpireControllerProps {
   jerseyColor?: string;
   showCap?: boolean;
   modelUrl?: string;
-  position?: { x: number; y: number; z: number };
 }
 
 export const UmpireController = forwardRef<UmpireControllerHandle, UmpireControllerProps>(
@@ -23,13 +22,12 @@ export const UmpireController = forwardRef<UmpireControllerHandle, UmpireControl
       jerseyColor = '#ffffff',
       showCap = true,
       modelUrl,
-      position,
     },
     ref,
   ) {
     const playerRef = useRef<PlayerModelHandle>(null);
     const groupRef = useRef<THREE.Group>(null);
-    const placement = resolveUmpirePlacement(position);
+    const placement = resolveUmpirePlacement();
 
     useLayoutEffect(() => {
       if (!groupRef.current) return;

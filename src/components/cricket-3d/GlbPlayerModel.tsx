@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import {
   CLIPS,
   applyCricketKitLook,
+  applyUmpireKitLook,
   getPlayerModelConfig,
   isCricketProfile,
   isStaticProfile,
@@ -138,7 +139,10 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         return;
       }
 
-      if (!config.skipKitRecolor && config.color) applyCricketKitLook(scene, config.color);
+      if (!config.skipKitRecolor) {
+        if (role === 'umpire') applyUmpireKitLook(scene);
+        else if (config.color) applyCricketKitLook(scene, config.color);
+      }
 
       const resolved = resolvePlayerBones(scene, config.profile);
       const b = bonesRef.current;

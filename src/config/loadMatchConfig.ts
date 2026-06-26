@@ -44,8 +44,6 @@ export function loadMatchConfig(): MatchConfig {
         name: 'Umpire',
         kitColor: '#ffffff',
         showCap: true,
-        position: { x: 1.0, y: 0, z: -5.5 },
-        facing: 'squareLeg',
       },
     });
     return cached;

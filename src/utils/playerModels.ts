@@ -180,3 +180,36 @@ export function applyCricketKitLook(root: THREE.Object3D, teamColor?: string) {
     }
   });
 }
+
+/** Umpire kit — white shirt, black trousers, light shoes (matches real umpire dress). */
+export function applyUmpireKitLook(root: THREE.Object3D) {
+  const parts: [RegExp, string][] = [
+    [/Outfit_Top/i, '#ffffff'],
+    [/Outfit_Bottom/i, '#1a1a1a'],
+    [/Outfit_Footwear/i, '#f0f0f0'],
+  ];
+
+  root.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+
+    const mats = Array.isArray(child.material) ? child.material : [child.material];
+    const nextMats = mats.map((mat) => {
+      if (!(mat instanceof THREE.MeshStandardMaterial)) return mat;
+      const name = mat.name ?? '';
+      const part = parts.find(([re]) => re.test(name));
+      if (!part) return mat;
+
+      const kitMat = mat.clone();
+      kitMat.name = mat.name;
+      kitMat.color.set(part[1]);
+      kitMat.map = null;
+      kitMat.roughness = 0.65;
+      kitMat.needsUpdate = true;
+      return kitMat;
+    });
+
+    if (nextMats.some((m, i) => m !== mats[i])) {
+      child.material = Array.isArray(child.material) ? nextMats : nextMats[0]!;
+    }
+  });
+}
