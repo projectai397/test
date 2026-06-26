@@ -42,7 +42,9 @@ export function loadMatchConfig(): MatchConfig {
       },
       umpire: {
         name: 'Umpire',
-        position: { x: 8, y: 0, z: -3.4 },
+        kitColor: '#ffffff',
+        showCap: true,
+        position: { x: 1.0, y: 0, z: -5.5 },
         facing: 'squareLeg',
       },
     });

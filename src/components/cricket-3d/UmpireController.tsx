@@ -1,7 +1,7 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { PlayerModel, type PlayerModelHandle } from './PlayerModel';
-import { PITCH_FACING } from '../../utils/playerFacing';
+import { resolveUmpirePlacement } from '../../utils/umpirePlacement';
 
 export interface UmpireControllerHandle {
   isReady: () => boolean;
@@ -10,33 +10,39 @@ export interface UmpireControllerHandle {
 
 interface UmpireControllerProps {
   name?: string;
+  jerseyColor?: string;
+  showCap?: boolean;
   modelUrl?: string;
   position?: { x: number; y: number; z: number };
-  facingY?: number;
 }
 
 export const UmpireController = forwardRef<UmpireControllerHandle, UmpireControllerProps>(
-  function UmpireController({ name = 'Umpire', modelUrl, position, facingY }, ref) {
+  function UmpireController(
+    {
+      name = 'Umpire',
+      jerseyColor = '#ffffff',
+      showCap = true,
+      modelUrl,
+      position,
+    },
+    ref,
+  ) {
     const playerRef = useRef<PlayerModelHandle>(null);
     const groupRef = useRef<THREE.Group>(null);
-
-    const homeX = position?.x ?? 8;
-    const homeY = position?.y ?? 0;
-    const homeZ = position?.z ?? -3.4;
-    const homeFacing = facingY ?? PITCH_FACING.squareLegUmpire;
+    const placement = resolveUmpirePlacement(position);
 
     useLayoutEffect(() => {
       if (!groupRef.current) return;
-      groupRef.current.position.set(homeX, homeY, homeZ);
-      groupRef.current.rotation.set(0, homeFacing, 0);
-    }, [homeX, homeY, homeZ, homeFacing]);
+      groupRef.current.position.set(placement.x, placement.y, placement.z);
+      groupRef.current.rotation.set(0, placement.facingY, 0);
+    }, [placement.x, placement.y, placement.z, placement.facingY]);
 
     useImperativeHandle(ref, () => ({
       isReady: () => !!groupRef.current && !!playerRef.current?.isReady(),
       reset: () => {
         if (groupRef.current) {
-          groupRef.current.position.set(homeX, homeY, homeZ);
-          groupRef.current.rotation.set(0, homeFacing, 0);
+          groupRef.current.position.set(placement.x, placement.y, placement.z);
+          groupRef.current.rotation.set(0, placement.facingY, 0);
         }
         playerRef.current?.resetPose();
       },
@@ -44,7 +50,14 @@ export const UmpireController = forwardRef<UmpireControllerHandle, UmpireControl
 
     return (
       <group ref={groupRef}>
-        <PlayerModel ref={playerRef} role="umpire" label={name} modelUrl={modelUrl} />
+        <PlayerModel
+          ref={playerRef}
+          role="umpire"
+          jerseyColor={jerseyColor}
+          showCap={showCap}
+          label={name}
+          modelUrl={modelUrl}
+        />
       </group>
     );
   },

@@ -12,7 +12,6 @@ import { KeeperController, type KeeperControllerHandle } from './KeeperControlle
 import { NonStrikerController, type NonStrikerControllerHandle } from './NonStrikerController';
 import { FielderController, type FielderControllerHandle } from './FielderController';
 import { UmpireController, type UmpireControllerHandle } from './UmpireController';
-import { OptionalModelCharacter } from './OptionalModelCharacter';
 import { BallController, type BallControllerHandle } from './BallController';
 import { CameraController } from './CameraController';
 import { AnimationOrchestrator } from './AnimationOrchestrator';
@@ -25,10 +24,8 @@ import { buildDefaultBallEvent } from '../../utils/defaultBallEvent';
 import { scenePositions, cameraDefaults } from '../../utils/animationTimings';
 import { MODEL_PATHS } from '../../utils/playerModels';
 import { resolveFieldPosition } from '../../utils/fieldPositions';
-import { isGlbAvailable } from '../../utils/modelAvailability';
 import { auditExpectedModels, getModelInstallMessage, logModelAudit } from '../../utils/modelAudit';
 import { loadMatchConfig } from '../../config/loadMatchConfig';
-import { PITCH_FACING } from '../../utils/playerFacing';
 import type { CricketBallEvent } from '../../types/cricket-ball-event';
 import type { MatchConfig } from '../../types/match-config';
 import type { CameraViewPreset } from '../../utils/cameraPresets';
@@ -42,7 +39,6 @@ export interface Cricket3DLiveSceneProps {
   matchConfig?: MatchConfig;
   /** GLB URL override — defaults to cricket-player.glb for all roles */
   playerModelUrl?: string;
-  umpireModelUrl?: string;
 }
 
 function SceneLoader() {
@@ -65,7 +61,6 @@ function CricketScene({
   ballRef,
   stumpsRef,
   playerModelUrl,
-  umpireModelUrl,
 }: {
   matchConfig: MatchConfig;
   bowlerRef: React.RefObject<BowlerControllerHandle>;
@@ -77,7 +72,6 @@ function CricketScene({
   ballRef: React.RefObject<BallControllerHandle>;
   stumpsRef: React.RefObject<StumpsHandle>;
   playerModelUrl?: string;
-  umpireModelUrl?: string;
 }) {
   const modelUrl = playerModelUrl ?? MODEL_PATHS.cricketPlayer;
   const teamA = matchConfig.teams.teamA;
@@ -157,18 +151,14 @@ function CricketScene({
         );
       })}
 
-      <OptionalModelCharacter
-        modelUrl={umpireModelUrl ?? MODEL_PATHS.cricketUmpire}
-        label="umpire"
-      >
-        <UmpireController
-          ref={umpireRef}
-          name={umpire.name}
-          modelUrl={umpireModelUrl ?? MODEL_PATHS.cricketPlayer}
-          position={umpire.position}
-          facingY={PITCH_FACING.squareLegUmpire}
-        />
-      </OptionalModelCharacter>
+      <UmpireController
+        ref={umpireRef}
+        name={umpire.name}
+        jerseyColor={umpire.kitColor}
+        showCap={umpire.showCap}
+        modelUrl={modelUrl}
+        position={umpire.position}
+      />
 
       <Physics gravity={[0, -9.81, 0]} timeStep="vary" interpolate={true}>
         <PhysicsEnvironment />
@@ -197,7 +187,6 @@ export function Cricket3DLiveScene({
   defaultCameraAngle = 'free',
   matchConfig: matchConfigProp,
   playerModelUrl,
-  umpireModelUrl,
 }: Cricket3DLiveSceneProps) {
   const matchConfig = useMemo(
     () => matchConfigProp ?? loadMatchConfig(),
@@ -237,18 +226,11 @@ export function Cricket3DLiveScene({
     setCameraViewPreset(defaultCameraAngle);
     useGLTF.preload(playerModelUrl ?? MODEL_PATHS.cricketPlayer);
 
-    const umpireUrl = umpireModelUrl ?? MODEL_PATHS.cricketUmpire;
-    if (umpireUrl !== MODEL_PATHS.cricketPlayer) {
-      isGlbAvailable(umpireUrl).then((ok) => {
-        if (ok) useGLTF.preload(umpireUrl);
-      });
-    }
-
     auditExpectedModels().then((entries) => {
       logModelAudit(entries);
       setModelError(getModelInstallMessage(entries));
     });
-  }, [defaultCameraAngle, setCameraViewPreset, umpireModelUrl, playerModelUrl]);
+  }, [defaultCameraAngle, setCameraViewPreset, playerModelUrl]);
 
   useCricketWebSocket({ wsUrl, autoPlayDemo });
 
@@ -291,7 +273,6 @@ export function Cricket3DLiveScene({
             ballRef={ballRef}
             stumpsRef={stumpsRef}
             playerModelUrl={playerModelUrl}
-            umpireModelUrl={umpireModelUrl}
           />
         </Suspense>
       </Canvas>

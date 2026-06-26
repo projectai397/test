@@ -36,6 +36,8 @@ export interface TeamBConfig {
 
 export interface UmpireConfig {
   name: string;
+  kitColor: string;
+  showCap?: boolean;
   position: { x: number; y: number; z: number };
   facing: UmpireFacingPreset;
 }
@@ -158,10 +160,15 @@ export function validateMatchConfig(raw: unknown): MatchConfig {
     },
     umpire: {
       name: requireString(raw.umpire, 'name', 'umpire'),
+      kitColor:
+        typeof raw.umpire.kitColor === 'string'
+          ? requireHexColor(raw.umpire, 'kitColor', 'umpire')
+          : '#ffffff',
+      showCap: raw.umpire.showCap !== false,
       position: {
-        x: typeof umpirePos.x === 'number' ? umpirePos.x : 8,
+        x: typeof umpirePos.x === 'number' ? umpirePos.x : 1.0,
         y: typeof umpirePos.y === 'number' ? umpirePos.y : 0,
-        z: typeof umpirePos.z === 'number' ? umpirePos.z : -3.4,
+        z: typeof umpirePos.z === 'number' ? umpirePos.z : -5.5,
       },
       facing: 'squareLeg',
     },

@@ -32,36 +32,6 @@ export function attachCricketGear(
   const gearRoot = new THREE.Group();
   gearRoot.name = 'CricketGearRoot';
 
-  if (role === 'umpire') {
-    const capMat = mat('#ffffff');
-    const coatMat = mat('#1a1a1a');
-    if (bones.head) {
-      const cap = new THREE.Group();
-      cap.name = 'UmpireCap';
-      cap.position.set(0, 0.12, 0);
-      const dome = new THREE.Mesh(
-        new THREE.SphereGeometry(0.1, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.45),
-        capMat,
-      );
-      dome.castShadow = true;
-      cap.add(dome);
-      bones.head.add(cap);
-      root.traverse((obj) => {
-        if (!(obj instanceof THREE.Mesh)) return;
-        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-        if (mats.some((m) => /hair/i.test(m.name ?? ''))) obj.visible = false;
-      });
-    }
-    if (bones.torso) {
-      const coat = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.62, 0.28), coatMat);
-      coat.position.set(0, 0.08, 0.02);
-      coat.castShadow = true;
-      bones.torso.add(coat);
-    }
-    root.add(gearRoot);
-    return;
-  }
-
   const minimal = options?.minimalGear ?? false;
   const padMat = mat('#f0ebe0');
   const gloveMat = mat('#ffffff');

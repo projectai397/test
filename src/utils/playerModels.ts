@@ -74,8 +74,8 @@ const ROLE_CONFIG: Record<PlayerRole, PlayerModelConfig> = {
   umpire: {
     ...CRICKET_BASE,
     url: MODEL_PATHS.cricketPlayer,
-    skipKitRecolor: true,
-    minimalGear: false,
+    color: '#ffffff',
+    showCap: true,
   },
 };
 
