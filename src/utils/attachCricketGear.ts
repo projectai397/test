@@ -59,7 +59,7 @@ function attachWideBrimHat(head: THREE.Object3D, color: string) {
   const g = new THREE.Group();
   g.name = 'UmpireWideBrimHat';
   // Head_06 skin crown is ~y=0.19; HeadAnchor is y=0.08 — match bowler cap lift (+0.12).
-  g.position.set(0, 0.115, 0.005);
+  g.position.set(0, 0.075, 0.005);
   g.rotation.x = 0.025;
 
   // Profile: y=0 is the crown base (head contact). Brim below, dome above.
