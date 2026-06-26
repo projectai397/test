@@ -8,8 +8,15 @@ interface GearBones extends PlayerBones {
   handR: THREE.Object3D | null;
 }
 
-function mat(color: string) {
-  return new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.05 });
+function mat(color: string, depthBias = false) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.72,
+    metalness: 0.0,
+    ...(depthBias
+      ? { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }
+      : {}),
+  });
 }
 
 function hideHair(root: THREE.Object3D) {
@@ -20,20 +27,68 @@ function hideHair(root: THREE.Object3D) {
   });
 }
 
-/** Classic wide-brim cricket umpire hat (round crown + flat circular brim). */
+function hideUmpireScalp(root: THREE.Object3D) {
+  hideHair(root);
+}
+
+function removeNamedFromTree(root: THREE.Object3D, name: string) {
+  const toRemove: THREE.Object3D[] = [];
+  root.traverse((obj) => {
+    if (obj.name === name) toRemove.push(obj);
+  });
+  toRemove.forEach((obj) => obj.removeFromParent());
+}
+
+/** HeadAnchor is placed on the skull in GlbPlayerModel — reliable wear point for hats. */
+function getHeadWearAnchor(head: THREE.Object3D): THREE.Object3D {
+  const headAnchor = head.children.find((c) => c.name === 'HeadAnchor');
+  return headAnchor ?? head;
+}
+
+/**
+ * ICC-style wide-brim cricket sun hat — lathe profile with y=0 at the crown base
+ * (same wear point as the bowler cap HeadAnchor on the skull).
+ */
 function attachWideBrimHat(head: THREE.Object3D, color: string) {
-  const hatMat = mat(color);
+  removeNamedFromTree(head, 'UmpireWideBrimHat');
+
+  const anchor = getHeadWearAnchor(head);
+  const hatMat = mat(color, true);
+  const bandMat = mat('#141414');
+
   const g = new THREE.Group();
   g.name = 'UmpireWideBrimHat';
-  g.position.set(0, 0.11, 0);
-  const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.105, 0.065, 16), hatMat);
-  crown.position.y = 0.02;
-  crown.castShadow = true;
-  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.014, 24), hatMat);
-  brim.position.y = -0.01;
-  brim.castShadow = true;
-  g.add(crown, brim);
-  head.add(g);
+  // Head_06 skin crown is ~y=0.19; HeadAnchor is y=0.08 — match bowler cap lift (+0.12).
+  g.position.set(0, 0.115, 0.005);
+  g.rotation.x = 0.025;
+
+  // Profile: y=0 is the crown base (head contact). Brim below, dome above.
+  const profile = [
+    new THREE.Vector2(0.158, -0.012),
+    new THREE.Vector2(0.158, -0.008),
+    new THREE.Vector2(0.148, -0.004),
+    new THREE.Vector2(0.098, -0.001),
+    new THREE.Vector2(0.093, 0.0),
+    new THREE.Vector2(0.091, 0.016),
+    new THREE.Vector2(0.084, 0.034),
+    new THREE.Vector2(0.074, 0.05),
+    new THREE.Vector2(0.056, 0.064),
+    new THREE.Vector2(0.034, 0.072),
+    new THREE.Vector2(0.0, 0.076),
+  ];
+
+  const body = new THREE.Mesh(new THREE.LatheGeometry(profile, 56), hatMat);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  body.renderOrder = 3;
+
+  const band = new THREE.Mesh(new THREE.TorusGeometry(0.093, 0.008, 12, 40), bandMat);
+  band.rotation.x = Math.PI / 2;
+  band.position.y = -0.002;
+  band.castShadow = true;
+
+  g.add(body, band);
+  anchor.add(g);
 }
 
 interface GearOptions {
@@ -67,7 +122,10 @@ export function attachCricketGear(
   const showCap = options?.showCap ?? (!minimal && role === 'bowler');
   const showGloves = role === 'keeper' || role === 'batter' || role === 'bowler';
 
-  if (showCap) hideHair(root);
+  if (showCap) {
+    if (role === 'umpire') hideUmpireScalp(root);
+    else hideHair(root);
+  }
 
   if (bones.head && showHelmet) {
     const g = new THREE.Group();
@@ -81,8 +139,9 @@ export function attachCricketGear(
   }
 
   if (bones.head && showCap && role === 'umpire') {
-    attachWideBrimHat(bones.head, '#ffffff');
+    attachWideBrimHat(bones.head, '#f5f5f5');
   } else if (bones.head && showCap) {
+    removeNamedFromTree(bones.head, 'CricketCap');
     const g = new THREE.Group();
     g.name = 'CricketCap';
     g.position.set(0, 0.12, 0);
@@ -92,7 +151,7 @@ export function attachCricketGear(
     brim.position.set(0, 0, 0.08);
     brim.rotation.x = 0.35;
     g.add(dome, brim);
-    bones.head.add(g);
+    getHeadWearAnchor(bones.head).add(g);
   }
 
   const addPad = (bone: THREE.Object3D | null, side: number) => {
