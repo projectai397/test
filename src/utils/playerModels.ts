@@ -44,6 +44,7 @@ export const TEAM_KIT_RED = '#dc2626';
 const CRICKET_BASE: Omit<PlayerModelConfig, 'url' | 'color'> = {
   profile: 'cricket',
   scale: 1,
+  /** cricket-player.glb bind forward is −Z; controller group Y rotation handles pitch facing. */
   rotationY: 0,
   yOffset: 0,
   skipKitRecolor: false,

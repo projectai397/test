@@ -1,5 +1,5 @@
 import { scenePositions } from './animationTimings';
-import { PITCH_FACING } from './playerFacing';
+import { facingToward } from './playerFacing';
 
 export interface ResolvedUmpirePlacement {
   x: number;
@@ -13,10 +13,12 @@ export interface ResolvedUmpirePlacement {
  * (as in real cricket). Faces down the pitch toward the striker.
  */
 export function resolveUmpirePlacement(): ResolvedUmpirePlacement {
+  const x = scenePositions.nonStrikerEndX + scenePositions.umpireBehindStumps;
+  const z = 0;
   return {
-    x: scenePositions.nonStrikerEndX + scenePositions.umpireBehindStumps,
+    x,
     y: 0,
-    z: 0,
-    facingY: PITCH_FACING.bowlersEndUmpire,
+    z,
+    facingY: facingToward(x, z, scenePositions.strikerEndX, scenePositions.strikerZ),
   };
 }

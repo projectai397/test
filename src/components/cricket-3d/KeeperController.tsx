@@ -66,6 +66,7 @@ export const KeeperController = forwardRef<KeeperControllerHandle, KeeperControl
 
       reset: () => {
         timelineRef.current?.kill();
+        if (groupRef.current) setKeeperHome(groupRef.current);
         playerRef.current?.resetPose();
       },
     }));

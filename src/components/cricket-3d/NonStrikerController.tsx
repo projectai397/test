@@ -18,7 +18,7 @@ interface NonStrikerControllerProps {
 
 function setNonStrikerHome(group: THREE.Group) {
   group.position.set(scenePositions.nonStrikerEndX, 0, scenePositions.nonStrikerOffsetZ);
-  group.rotation.set(0, PITCH_FACING.towardStriker, 0);
+  group.rotation.set(0, PITCH_FACING.sideOnOffSide, 0);
 }
 
 export const NonStrikerController = forwardRef<
@@ -44,6 +44,7 @@ export const NonStrikerController = forwardRef<
 
     reset: () => {
       timelineRef.current?.kill();
+      if (groupRef.current) setNonStrikerHome(groupRef.current);
       playerRef.current?.resetPose();
     },
   }));
