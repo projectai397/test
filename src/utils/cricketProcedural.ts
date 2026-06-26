@@ -2,12 +2,20 @@ import gsap from 'gsap';
 import type * as THREE from 'three';
 import { scenePositions } from './animationTimings';
 import type { BoneRestMap } from './boneRestPose';
+import {
+  BOWLING_PHASES,
+  CRICKET_RUNUP_HOLD,
+  CRICKET_RUNUP_STRIDES,
+  type BowlingPose,
+} from './wolf3dBowlingPoses';
 
 export interface PlayerBones {
   hips: THREE.Object3D | null;
   torso: THREE.Object3D | null;
   legL: THREE.Object3D | null;
   legR: THREE.Object3D | null;
+  lowerLegL: THREE.Object3D | null;
+  lowerLegR: THREE.Object3D | null;
   armL: THREE.Object3D | null;
   armR: THREE.Object3D | null;
   foreArmL: THREE.Object3D | null;
@@ -44,10 +52,117 @@ function rotRel(
   );
 }
 
+/** Tween from current bone rotation toward rest + delta (smooth phase chaining). */
+function rotTo(
+  tl: gsap.core.Timeline,
+  bone: THREE.Object3D | null | undefined,
+  rest: BoneRestMap,
+  delta: Partial<{ x: number; y: number; z: number }>,
+  duration: number,
+  position: number | string = 0,
+  ease = 'power2.inOut',
+) {
+  if (!bone) return;
+  const base = restRot(bone, rest);
+  tl.to(
+    bone.rotation,
+    {
+      x: base.x + (delta.x ?? 0),
+      y: base.y + (delta.y ?? 0),
+      z: base.z + (delta.z ?? 0),
+      duration,
+      ease,
+    },
+    position,
+  );
+}
+
+function snapBone(
+  bone: THREE.Object3D | null | undefined,
+  rest: BoneRestMap,
+  delta: Partial<{ x: number; y: number; z: number }> | undefined,
+) {
+  if (!bone || !delta) return;
+  const base = restRot(bone, rest);
+  bone.rotation.set(
+    base.x + (delta.x ?? 0),
+    base.y + (delta.y ?? 0),
+    base.z + (delta.z ?? 0),
+  );
+}
+
+function applyPose(bones: PlayerBones, rest: BoneRestMap, pose: BowlingPose) {
+  snapBone(bones.hips, rest, pose.hips);
+  snapBone(bones.torso, rest, pose.torso);
+  snapBone(bones.legL, rest, pose.legL);
+  snapBone(bones.legR, rest, pose.legR);
+  snapBone(bones.lowerLegL, rest, pose.lowerLegL);
+  snapBone(bones.lowerLegR, rest, pose.lowerLegR);
+  snapBone(bones.armL, rest, pose.armL);
+  snapBone(bones.armR, rest, pose.armR);
+  snapBone(bones.foreArmL, rest, pose.foreArmL);
+  snapBone(bones.foreArmR, rest, pose.foreArmR);
+}
+
+function tweenPose(
+  tl: gsap.core.Timeline,
+  bones: PlayerBones,
+  rest: BoneRestMap,
+  pose: BowlingPose,
+  duration: number,
+  at: number | string,
+  ease: string,
+  chain = false,
+) {
+  const rot = chain ? rotTo : rotRel;
+  rot(tl, bones.hips, rest, pose.hips ?? {}, duration, at, ease);
+  rot(tl, bones.torso, rest, pose.torso ?? {}, duration, at, ease);
+  rot(tl, bones.legL, rest, pose.legL ?? {}, duration, at, ease);
+  rot(tl, bones.legR, rest, pose.legR ?? {}, duration, at, ease);
+  rot(tl, bones.lowerLegL, rest, pose.lowerLegL ?? {}, duration, at, ease);
+  rot(tl, bones.lowerLegR, rest, pose.lowerLegR ?? {}, duration, at, ease);
+  rot(tl, bones.armL, rest, pose.armL ?? {}, duration, at, ease);
+  rot(tl, bones.armR, rest, pose.armR ?? {}, duration, at, ease);
+  rot(tl, bones.foreArmL, rest, pose.foreArmL ?? {}, duration, at, ease);
+  rot(tl, bones.foreArmR, rest, pose.foreArmR ?? {}, duration, at, ease);
+}
+
+/** Snap into side-on cricket run-up hold (avoids T-pose flash). */
+export function applyCricketRunUpPose(bones: PlayerBones, rest: BoneRestMap): void {
+  applyPose(bones, rest, CRICKET_RUNUP_HOLD);
+}
+
 /** Seconds into buildBowlingTimeline when the ball leaves the hand. */
 export const BOWLING_RELEASE_TIME = 0.48;
 
-/** Cricket fast-bowling action at the crease: gather → bound → release → follow-through. */
+/** Side-on cricket jog — locked upper body, thigh + shin strides. */
+export function buildCricketRunUpTimeline(
+  bones: PlayerBones,
+  rest: BoneRestMap,
+  duration: number,
+): gsap.core.Timeline {
+  const tl = gsap.timeline();
+
+  tweenPose(tl, bones, rest, CRICKET_RUNUP_HOLD, Math.min(duration * 0.12, 0.22), 0, 'power1.out');
+
+  const strideStart = Math.min(duration * 0.12, 0.22);
+  const strideWindow = duration - strideStart - 0.1;
+  const strideCount = CRICKET_RUNUP_STRIDES.length;
+  const strideDur = strideWindow / strideCount;
+
+  CRICKET_RUNUP_STRIDES.forEach((stride, i) => {
+    const t = strideStart + i * strideDur;
+    rotRel(tl, bones.legR, rest, stride.legR, strideDur, t, 'sine.inOut');
+    rotRel(tl, bones.lowerLegR, rest, stride.lowerLegR, strideDur, t, 'sine.inOut');
+    rotRel(tl, bones.legL, rest, stride.legL, strideDur, t, 'sine.inOut');
+    rotRel(tl, bones.lowerLegL, rest, stride.lowerLegL, strideDur, t, 'sine.inOut');
+    tweenPose(tl, bones, rest, CRICKET_RUNUP_HOLD, strideDur * 0.4, t, 'power1.out');
+  });
+
+  return tl;
+}
+
+/** Wolf3D fast-medium delivery: gather → bound → plant → OTM release → follow-through. */
 export function buildBowlingTimeline(
   bones: PlayerBones,
   rest: BoneRestMap,
@@ -55,30 +170,14 @@ export function buildBowlingTimeline(
   onRelease?: () => void,
 ): gsap.core.Timeline {
   const tl = gsap.timeline();
+  const p = BOWLING_PHASES;
 
-  rotRel(tl, bones.armR, rest, { x: -1.8, z: 1.0, y: 0.2 }, 0.28, 0, 'power2.out');
-  rotRel(tl, bones.foreArmR, rest, { x: -0.8, z: 0.3 }, 0.28, 0, 'power2.out');
-  rotRel(tl, bones.armL, rest, { x: 0.6, z: -0.5, y: -0.2 }, 0.28, 0, 'power2.out');
-  rotRel(tl, bones.torso, rest, { x: -0.55, y: 0.15, z: 0.05 }, 0.28, 0, 'power2.out');
-  rotRel(tl, bones.hips, rest, { y: -0.12, x: 0.1 }, 0.28, 0, 'power2.out');
-  rotRel(tl, bones.legR, rest, { x: 0.4 }, 0.28, 0, 'power2.out');
-
-  rotRel(tl, bones.legL, rest, { x: 0.95, z: -0.15 }, 0.22, 0.22, 'power2.in');
-  rotRel(tl, bones.legR, rest, { x: -0.2 }, 0.22, 0.22, 'power2.in');
-  rotRel(tl, bones.armL, rest, { x: -0.9, z: -0.2, y: 0.1 }, 0.22, 0.22, 'power2.in');
-  rotRel(tl, bones.armR, rest, { x: -3.0, z: 0.4, y: -0.1 }, 0.18, 0.28, 'power4.in');
-  rotRel(tl, bones.foreArmR, rest, { x: -1.6, z: 0.1 }, 0.18, 0.28, 'power4.in');
-  rotRel(tl, bones.torso, rest, { x: 0.35, y: -0.1 }, 0.18, 0.28, 'power4.in');
-
-  rotRel(tl, bones.armR, rest, { x: 0.9, z: -0.5, y: 0.15 }, 0.14, 0.42, 'power4.out');
-  rotRel(tl, bones.foreArmR, rest, { x: 0.3, z: -0.2 }, 0.14, 0.42, 'power4.out');
+  tweenPose(tl, bones, rest, p.gather, 0.12, 0, 'power2.out');
+  tweenPose(tl, bones, rest, p.bound, 0.14, 0.12, 'power2.out', true);
+  tweenPose(tl, bones, rest, p.plant, 0.14, 0.26, 'power3.in', true);
+  tweenPose(tl, bones, rest, p.release, 0.12, 0.4, 'power4.in', true);
   tl.call(() => onRelease?.(), undefined, BOWLING_RELEASE_TIME);
-
-  rotRel(tl, bones.armR, rest, { x: 1.4, z: -0.8, y: 0.25 }, 0.35, 0.52, 'power1.out');
-  rotRel(tl, bones.foreArmR, rest, { x: 0.6, z: -0.35 }, 0.35, 0.52, 'power1.out');
-  rotRel(tl, bones.torso, rest, { x: 0.75, y: -0.2, z: 0.1 }, 0.35, 0.52, 'power1.out');
-  rotRel(tl, bones.armL, rest, { x: -0.4, z: 0.2 }, 0.35, 0.52, 'power1.out');
-  rotRel(tl, bones.hips, rest, { y: 0.18, x: 0.15 }, 0.35, 0.52, 'power1.out');
+  tweenPose(tl, bones, rest, p.followThrough, 0.38, 0.52, 'power2.out', true);
 
   tl.to(
     group.position,
@@ -89,30 +188,14 @@ export function buildBowlingTimeline(
   return tl;
 }
 
-/** Leg-only run cycle for models without a Run/Walk clip (no arm pump). */
+/** @deprecated Use buildCricketRunUpTimeline */
 export function buildProceduralRunUpTimeline(
   bones: PlayerBones,
   rest: BoneRestMap,
   duration: number,
-  cycles: number,
+  _cycles: number,
 ): gsap.core.Timeline {
-  const tl = gsap.timeline();
-  const strideCount = Math.max(Math.round(cycles * 2), 4);
-  const half = duration / strideCount;
-
-  for (let i = 0; i < strideCount; i++) {
-    const t = i * half;
-    const rightForward = i % 2 === 0;
-    if (rightForward) {
-      rotRel(tl, bones.legR, rest, { x: 0.42, z: 0.04 }, half, t, 'sine.inOut');
-      rotRel(tl, bones.legL, rest, { x: -0.14, z: -0.02 }, half, t, 'sine.inOut');
-    } else {
-      rotRel(tl, bones.legL, rest, { x: 0.42, z: -0.04 }, half, t, 'sine.inOut');
-      rotRel(tl, bones.legR, rest, { x: -0.14, z: 0.02 }, half, t, 'sine.inOut');
-    }
-  }
-
-  return tl;
+  return buildCricketRunUpTimeline(bones, rest, duration);
 }
 
 /** @deprecated Merged into buildFullBowlingDeliveryTimeline approach phase. */

@@ -30,6 +30,8 @@ export function resolvePlayerBones(scene: THREE.Object3D, profile: ModelProfile)
     torso: findBone(scene, BONE_NAMES.spine),
     legL: findBone(scene, BONE_NAMES.leftUpLeg),
     legR: findBone(scene, BONE_NAMES.rightUpLeg),
+    lowerLegL: findBone(scene, 'LeftLeg'),
+    lowerLegR: findBone(scene, 'RightLeg'),
     armL: findBone(scene, BONE_NAMES.leftArm),
     armR: findBone(scene, BONE_NAMES.rightArm),
     foreArmL: findBone(scene, 'LeftForeArm'),

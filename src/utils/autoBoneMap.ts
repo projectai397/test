@@ -8,6 +8,8 @@ const BONE_CANDIDATES: Record<BoneKey, string[]> = {
   torso: ['spine2', 'spine1', 'spine', 'chest', 'torso_joint_3', 'torso_joint_2', 'skeleton_torso_joint'],
   legL: ['leftupleg', 'leg_joint_l', 'thigh_l', 'upperleg_l', 'leg_l_1'],
   legR: ['rightupleg', 'leg_joint_r', 'thigh_r', 'upperleg_r', 'leg_r_1'],
+  lowerLegL: ['leftleg', 'lowerleg_l', 'shin_l', 'calf_l', 'leg_l_2'],
+  lowerLegR: ['rightleg', 'lowerleg_r', 'shin_r', 'calf_r', 'leg_r_2'],
   armL: ['leftarm', 'arm_joint_l', 'upperarm_l', 'shoulder_l', 'skeleton_arm_joint_l'],
   armR: ['rightarm', 'arm_joint_r', 'upperarm_r', 'shoulder_r', 'skeleton_arm_joint_r'],
   foreArmL: ['leftforearm', 'forearm_l', 'lowerarm_l', 'arm_joint_l__3', 'elbow_l'],

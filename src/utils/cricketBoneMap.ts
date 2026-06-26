@@ -40,6 +40,8 @@ export function resolveCricketBones(scene: THREE.Object3D): PlayerBones & {
     torso: findCricketBone(scene, f.spine) ?? findCricketBone(scene, f.spineUpper),
     legL: findCricketBone(scene, f.legL),
     legR: findCricketBone(scene, f.legR),
+    lowerLegL: null,
+    lowerLegR: null,
     armL: findCricketBone(scene, f.armL),
     armR: findCricketBone(scene, f.armR),
     foreArmL: findCricketBone(scene, f.foreArmL),

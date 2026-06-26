@@ -50,22 +50,22 @@ export function computeReleaseVelocity(params: ReleaseParams): {
     const hx = hf.x / hLen;
     const hy = hf.y / hLen;
     const hz = hf.z / hLen;
-    dirX = hx * 0.45 + tx * 0.55;
-    dirY = hy * 0.45 + ty * 0.55 - 0.1;
-    dirZ = hz * 0.45 + tz * 0.55;
+    dirX = hx * 0.7 + tx * 0.3;
+    dirY = hy * 0.7 + ty * 0.3 - 0.12;
+    dirZ = hz * 0.7 + tz * 0.3;
     const dLen = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ) || 1;
     dirX /= dLen;
     dirY /= dLen;
     dirZ /= dLen;
   } else {
-    dirX = tx * 0.92;
-    dirY = ty * 0.92 + 0.15;
-    dirZ = tz * 0.92;
+    dirX = tx * 0.95;
+    dirY = ty * 0.95 - 0.05;
+    dirZ = tz * 0.95;
   }
 
   return {
     x: dirX * speed,
-    y: dirY * speed + 0.8,
+    y: dirY * speed + 0.4,
     z: dirZ * speed,
   };
 }

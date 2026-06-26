@@ -10,6 +10,8 @@ export function captureBoneRestPose(bones: PlayerBones): BoneRestMap {
     bones.torso,
     bones.legL,
     bones.legR,
+    bones.lowerLegL,
+    bones.lowerLegR,
     bones.armL,
     bones.armR,
     bones.foreArmL,
