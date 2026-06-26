@@ -2,6 +2,7 @@ import type * as THREE from 'three';
 import { BONE_NAMES, findBone } from './playerModels';
 import { resolveCricketBones } from './cricketBoneMap';
 import { isBoneSetComplete, resolveAutoBones } from './autoBoneMap';
+import { isWolf3dRig, resolveWolf3dBones } from './wolf3dBoneMap';
 import type { PlayerBones } from './cricketProcedural';
 import type { ModelProfile } from './playerModels';
 
@@ -13,6 +14,10 @@ export type ResolvedBones = PlayerBones & {
 
 export function resolvePlayerBones(scene: THREE.Object3D, profile: ModelProfile): ResolvedBones {
   if (profile === 'cricket') {
+    if (isWolf3dRig(scene)) {
+      const wolf = resolveWolf3dBones(scene);
+      if (isBoneSetComplete(wolf)) return wolf;
+    }
     const cricket = resolveCricketBones(scene);
     if (isBoneSetComplete(cricket)) return cricket;
     const auto = resolveAutoBones(scene);

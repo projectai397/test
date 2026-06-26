@@ -28,9 +28,9 @@ export const scenePositions = {
    */
   bowlerCreaseX: 20.12 - 1.22,
 
-  /** Deep run-up start — several metres behind the bowler-end stumps. */
-  bowlerRunUpDepth: 6,
-  bowlerStartX: 20.12 + 6,
+  /** Deep run-up start — metres behind the bowler-end stumps (shorter = less sprint-like). */
+  bowlerRunUpDepth: 3.5,
+  bowlerStartX: 20.12 + 3.5,
   bowlerStartZ: 0.5,
 
   strikerZ: 0,

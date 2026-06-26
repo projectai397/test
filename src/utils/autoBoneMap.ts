@@ -21,7 +21,20 @@ function normalizeBoneName(name: string): string {
   return name.toLowerCase().replace(/mixamorig[:_]?/g, '').replace(/[^a-z0-9]/g, '');
 }
 
-function scoreBone(name: string, candidates: string[]): number {
+function isFingerOrEndBone(name: string): boolean {
+  const norm = normalizeBoneName(name);
+  return (
+    norm.includes('index') ||
+    norm.includes('thumb') ||
+    norm.includes('middle') ||
+    norm.includes('ring') ||
+    norm.includes('pinky') ||
+    norm.includes('end')
+  );
+}
+
+function scoreBone(name: string, candidates: string[], key: BoneKey): number {
+  if ((key === 'handL' || key === 'handR') && isFingerOrEndBone(name)) return -1;
   const norm = normalizeBoneName(name);
   for (let i = 0; i < candidates.length; i++) {
     const candidate = candidates[i]!.replace(/[^a-z0-9]/g, '');
@@ -38,7 +51,7 @@ function pickBone(bones: THREE.Bone[], key: BoneKey, used: Set<THREE.Bone>): THR
 
   for (const bone of bones) {
     if (used.has(bone)) continue;
-    const score = scoreBone(bone.name, candidates);
+    const score = scoreBone(bone.name, candidates, key);
     if (score > bestScore) {
       bestScore = score;
       best = bone;

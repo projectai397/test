@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { getBallRadius } from './calculateBallTrajectory';
 import { scenePositions } from './animationTimings';
 
@@ -13,6 +14,15 @@ export interface ReleaseParams {
   speedKmh: number;
   lineOffsetZ: number;
   releaseWorldPos: { x: number; y: number; z: number };
+  handForward?: { x: number; y: number; z: number };
+}
+
+/** +Z bind model — world-space forward from the bowling hand at release. */
+export function getHandReleaseForward(hand: THREE.Object3D): THREE.Vector3 {
+  hand.updateWorldMatrix(true, false);
+  const q = new THREE.Quaternion();
+  hand.getWorldQuaternion(q);
+  return new THREE.Vector3(0, 0, 1).applyQuaternion(q).normalize();
 }
 
 /** Initial velocity from bowler release toward striker end (-X direction). */
@@ -23,14 +33,40 @@ export function computeReleaseVelocity(params: ReleaseParams): {
 } {
   const speed = speedKmhToMs(params.speedKmh);
   const dx = scenePositions.strikerEndX - params.releaseWorldPos.x;
-  const dy = 0.8 - params.releaseWorldPos.y;
+  const dy = 0.75 - params.releaseWorldPos.y;
   const dz = params.lineOffsetZ - params.releaseWorldPos.z;
-  const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+  const targetLen = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+  const tx = dx / targetLen;
+  const ty = dy / targetLen;
+  const tz = dz / targetLen;
+
+  let dirX: number;
+  let dirY: number;
+  let dirZ: number;
+
+  if (params.handForward) {
+    const hf = params.handForward;
+    const hLen = Math.sqrt(hf.x * hf.x + hf.y * hf.y + hf.z * hf.z) || 1;
+    const hx = hf.x / hLen;
+    const hy = hf.y / hLen;
+    const hz = hf.z / hLen;
+    dirX = hx * 0.45 + tx * 0.55;
+    dirY = hy * 0.45 + ty * 0.55 - 0.1;
+    dirZ = hz * 0.45 + tz * 0.55;
+    const dLen = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ) || 1;
+    dirX /= dLen;
+    dirY /= dLen;
+    dirZ /= dLen;
+  } else {
+    dirX = tx * 0.92;
+    dirY = ty * 0.92 + 0.15;
+    dirZ = tz * 0.92;
+  }
 
   return {
-    x: (dx / dist) * speed * 0.92,
-    y: (dy / dist) * speed * 0.92 + 1.2,
-    z: (dz / dist) * speed * 0.92,
+    x: dirX * speed,
+    y: dirY * speed + 0.8,
+    z: dirZ * speed,
   };
 }
 

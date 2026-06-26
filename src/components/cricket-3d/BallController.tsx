@@ -6,13 +6,16 @@ import {
   BALL_RADIUS,
   computeReleaseVelocity,
   computeSixImpulse,
+  getHandReleaseForward,
   speedKmhToMs,
 } from '../../utils/ballPhysics';
 import { scenePositions } from '../../utils/animationTimings';
+import { BallFlightTrail } from './BallFlightTrail';
 
 export interface BallControllerHandle {
   attachToHand: (hand: THREE.Object3D) => void;
   releaseWithPhysics: (speedKmh: number, lineOffsetZ: number) => void;
+  releaseFromHand: (hand: THREE.Object3D, speedKmh: number, lineOffsetZ: number) => void;
   applySixHit: () => void;
   waitUntilNearBatter: (timeoutMs?: number) => Promise<void>;
   waitFlight: (durationMs: number) => Promise<void>;
@@ -26,6 +29,7 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
   const handRef = useRef<THREE.Object3D | null>(null);
   const modeRef = useRef<BallMode>('hidden');
   const [ballVisible, setBallVisible] = useState(false);
+  const [trailActive, setTrailActive] = useState(false);
   const worldPos = useRef(new THREE.Vector3());
   const waitResolveRef = useRef<(() => void) | null>(null);
 
@@ -56,6 +60,7 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
     attachToHand: (hand) => {
       handRef.current = hand;
       modeRef.current = 'attached';
+      setTrailActive(false);
       setBallVisible(true);
       const body = bodyRef.current;
       if (!body) return;
@@ -76,6 +81,7 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
 
       handRef.current = null;
       modeRef.current = 'dynamic';
+      setTrailActive(true);
       body.setBodyType(0, true);
 
       const pos = body.translation();
@@ -83,6 +89,39 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
         speedKmh,
         lineOffsetZ,
         releaseWorldPos: { x: pos.x, y: pos.y, z: pos.z },
+      });
+
+      body.setLinvel(vel, true);
+      body.setAngvel({ x: speedKmhToMs(speedKmh) * 8, y: 2, z: 1.5 }, true);
+    },
+
+    releaseFromHand: (hand, speedKmh, lineOffsetZ) => {
+      const body = bodyRef.current;
+      if (!body) return;
+
+      handRef.current = null;
+      modeRef.current = 'dynamic';
+      setTrailActive(true);
+      body.setBodyType(0, true);
+
+      hand.updateWorldMatrix(true, false);
+      hand.getWorldPosition(worldPos.current);
+      const forward = getHandReleaseForward(hand);
+
+      body.setTranslation(
+        { x: worldPos.current.x, y: worldPos.current.y + 0.06, z: worldPos.current.z },
+        true,
+      );
+
+      const vel = computeReleaseVelocity({
+        speedKmh,
+        lineOffsetZ,
+        releaseWorldPos: {
+          x: worldPos.current.x,
+          y: worldPos.current.y + 0.06,
+          z: worldPos.current.z,
+        },
+        handForward: { x: forward.x, y: forward.y, z: forward.z },
       });
 
       body.setLinvel(vel, true);
@@ -110,6 +149,7 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
     reset: () => {
       handRef.current = null;
       modeRef.current = 'hidden';
+      setTrailActive(false);
       setBallVisible(false);
       waitResolveRef.current = null;
       const body = bodyRef.current;
@@ -135,10 +175,12 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
       ccd
       position={[0, -10, 0]}
     >
-      <mesh castShadow visible={ballVisible}>
-        <sphereGeometry args={[BALL_RADIUS * 1.15, 24, 24]} />
-        <meshStandardMaterial color="#cc2200" roughness={0.35} metalness={0.15} />
-      </mesh>
+      <BallFlightTrail active={trailActive}>
+        <mesh castShadow visible={ballVisible}>
+          <sphereGeometry args={[BALL_RADIUS * 1.15, 24, 24]} />
+          <meshStandardMaterial color="#cc2200" roughness={0.35} metalness={0.15} />
+        </mesh>
+      </BallFlightTrail>
     </RigidBody>
   );
 });

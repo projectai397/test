@@ -127,14 +127,20 @@ async function runDeliveryPipeline(event: CricketBallEvent, refs: SceneRefs): Pr
     if (hand) ball.attachToHand(hand);
 
     setAnimationState('bowler_runup');
-    const runUpResult = await bowler.playRunUp();
 
-    setAnimationState('bowling_action');
-    const bowlResult = await bowler.playBowlingAction(() => {
-      ball.releaseWithPhysics(event.delivery.speed, deliveryParams.lineOffsetZ);
+    const deliveryResult = await bowler.playDelivery((hand) => {
+      if (hand) {
+        ball.releaseFromHand(hand, event.delivery.speed, deliveryParams.lineOffsetZ);
+      } else {
+        ball.releaseWithPhysics(event.delivery.speed, deliveryParams.lineOffsetZ);
+      }
     });
 
+    setAnimationState('bowling_action');
     setAnimationState('ball_released');
+
+    const runUpResult = { ok: deliveryResult.ok, durationMs: deliveryResult.durationMs };
+    const bowlResult = deliveryResult;
     refs.nonStrikerRef.current?.playWatchBall();
     forEachFielder(refs.fieldersRef, (f) => f.playWatchBall());
     await ball.waitUntilNearBatter(6000);

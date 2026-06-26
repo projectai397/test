@@ -151,7 +151,11 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
       if (b.handR && !b.handR.children.some((c) => c.name === 'HandAnchor')) {
         handAnchorRef.current.name = 'HandAnchor';
         b.handR.add(handAnchorRef.current);
-        handAnchorRef.current.position.set(0, 0, 0);
+        if (role === 'bowler') {
+          handAnchorRef.current.position.set(0, -0.02, 0.04);
+        } else {
+          handAnchorRef.current.position.set(0, 0, 0);
+        }
       }
 
       if (b.head && !b.head.children.some((c) => c.name === 'HeadAnchor')) {

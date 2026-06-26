@@ -1,7 +1,6 @@
 import gsap from 'gsap';
 import type * as THREE from 'three';
 import { scenePositions } from './animationTimings';
-import { PITCH_FACING } from './playerFacing';
 import type { BoneRestMap } from './boneRestPose';
 
 export interface PlayerBones {
@@ -45,69 +44,176 @@ function rotRel(
   );
 }
 
-/** Right-arm fast-medium bowling: gather → high-arm load → over-the-top release → follow-through. */
-export function buildBowlingTimeline(
+/** Seconds into buildFullBowlingDeliveryTimeline when the ball leaves the hand. */
+export const BOWLING_RELEASE_TIME = 2.05;
+
+/** Approach phase duration before gather/bound (single continuous delivery). */
+export const BOWLING_APPROACH_DURATION = 1.65;
+
+/**
+ * Side-on cricket run-up — chest across the pitch, arms fixed (no sprint arm pump).
+ * Tuned for Wolf3D / Ready Player Me T-pose rest.
+ */
+const BOWLING_SIDEON_HOLD = {
+  hips: { x: 0.1, y: 1.18, z: 0.04 },
+  torso: { x: 0.22, y: 1.22, z: 0.06 },
+  /** Non-bowling arm: tucked at side for balance, not swinging. */
+  armL: { x: 0.72, z: -0.42, y: 0.08 },
+  foreArmL: { x: -0.38, z: -0.1 },
+  /** Bowling arm: down at hip holding the ball, steady through the run-up. */
+  armR: { x: 0.55, z: 0.22, y: -0.18 },
+  foreArmR: { x: -0.72, z: 0.08 },
+} as const;
+
+/** Gentle leg rhythm — small knee lift, not track-sprint strides. */
+const BOWLING_APPROACH_STRIDES: Array<{ legR: number; legL: number }> = [
+  { legR: 0.11, legL: -0.02 },
+  { legL: 0.13, legR: -0.02 },
+  { legR: 0.12, legL: -0.01 },
+  { legL: 0.14, legR: -0.02 },
+];
+
+function lockBowlingRunUpUpperBody(
+  tl: gsap.core.Timeline,
+  bones: PlayerBones,
+  rest: BoneRestMap,
+  at: number,
+  duration: number,
+) {
+  const h = BOWLING_SIDEON_HOLD;
+  rotRel(tl, bones.hips, rest, h.hips, duration, at, 'power1.out');
+  rotRel(tl, bones.torso, rest, h.torso, duration, at, 'power1.out');
+  rotRel(tl, bones.armL, rest, h.armL, duration, at, 'power1.out');
+  rotRel(tl, bones.foreArmL, rest, h.foreArmL, duration, at, 'power1.out');
+  rotRel(tl, bones.armR, rest, h.armR, duration, at, 'power1.out');
+  rotRel(tl, bones.foreArmR, rest, h.foreArmR, duration, at, 'power1.out');
+}
+
+/** Snap bones into side-on run-up hold (avoids T-pose flash at delivery start). */
+export function applyBowlingApproachHold(bones: PlayerBones, rest: BoneRestMap): void {
+  const h = BOWLING_SIDEON_HOLD;
+  const snap = (
+    bone: THREE.Object3D | null | undefined,
+    delta: Partial<{ x: number; y: number; z: number }>,
+  ) => {
+    if (!bone) return;
+    const base = restRot(bone, rest);
+    bone.rotation.set(
+      base.x + (delta.x ?? 0),
+      base.y + (delta.y ?? 0),
+      base.z + (delta.z ?? 0),
+    );
+  };
+  snap(bones.hips, h.hips);
+  snap(bones.torso, h.torso);
+  snap(bones.armL, h.armL);
+  snap(bones.foreArmL, h.foreArmL);
+  snap(bones.armR, h.armR);
+  snap(bones.foreArmR, h.foreArmR);
+}
+
+/**
+ * One continuous right-arm fast-medium delivery: approach strides → gather → bound →
+ * plant → release → follow-through. No separate "run then throw".
+ */
+export function buildFullBowlingDeliveryTimeline(
   bones: PlayerBones,
   rest: BoneRestMap,
   group: THREE.Object3D,
   onRelease?: () => void,
 ): gsap.core.Timeline {
   const tl = gsap.timeline();
-  const faceY = PITCH_FACING.towardStriker;
+  const t0 = BOWLING_APPROACH_DURATION;
 
-  // Phase 1 — Gather off the run-up: sink, side-on, arms find balance
-  rotRel(tl, bones.hips, rest, { x: 0.18, y: 0.1, z: 0.06 }, 0.14, 0, 'power2.out');
-  rotRel(tl, bones.torso, rest, { x: 0.22, y: 0.18, z: 0.14 }, 0.14, 0, 'power2.out');
-  rotRel(tl, bones.legR, rest, { x: 0.62, z: 0.08 }, 0.14, 0, 'power2.out');
-  rotRel(tl, bones.legL, rest, { x: 0.28, z: -0.05 }, 0.14, 0, 'power2.out');
-  rotRel(tl, bones.armL, rest, { x: 0.35, z: -0.42, y: 0.18 }, 0.14, 0, 'power2.out');
-  rotRel(tl, bones.armR, rest, { x: -0.35, z: 0.52, y: -0.12 }, 0.14, 0, 'power2.out');
-  rotRel(tl, bones.foreArmL, rest, { x: -0.35, z: -0.12 }, 0.12, 0, 'power2.out');
+  // ── Approach: side-on cricket jog — locked upper body, subtle leg rhythm ──
+  lockBowlingRunUpUpperBody(tl, bones, rest, 0, BOWLING_APPROACH_DURATION);
 
-  // Phase 2 — Back-foot braced; bowling arm climbs into high action
-  rotRel(tl, bones.legR, rest, { x: 0.82, z: 0.04 }, 0.2, 0.12, 'power2.inOut');
-  rotRel(tl, bones.armR, rest, { x: -1.75, z: 0.95, y: -0.2 }, 0.24, 0.12, 'power2.out');
-  rotRel(tl, bones.foreArmR, rest, { x: -1.25, z: 0.28 }, 0.24, 0.12, 'power2.out');
-  rotRel(tl, bones.armL, rest, { x: -0.15, z: -0.58, y: 0.28 }, 0.18, 0.12, 'power2.inOut');
-  rotRel(tl, bones.torso, rest, { x: -0.28, y: 0.22, z: 0.16 }, 0.2, 0.12, 'power2.out');
-  rotRel(tl, bones.hips, rest, { x: 0.08, y: 0.06, z: 0.08 }, 0.18, 0.12, 'power2.out');
+  const strideStart = 0.18;
+  const strideWindow = BOWLING_APPROACH_DURATION - strideStart - 0.12;
+  const strideDur = strideWindow / BOWLING_APPROACH_STRIDES.length;
 
-  // Phase 3 — Front-foot plant; front arm pulls down, bowling arm peaks behind head
-  rotRel(tl, bones.legL, rest, { x: 0.92, z: -0.14 }, 0.22, 0.28, 'power3.in');
-  rotRel(tl, bones.legR, rest, { x: 0.12, z: -0.12 }, 0.2, 0.28, 'power3.in');
-  rotRel(tl, bones.armR, rest, { x: -2.55, z: 1.22, y: -0.32 }, 0.26, 0.28, 'power3.out');
-  rotRel(tl, bones.foreArmR, rest, { x: -1.55, z: 0.42 }, 0.26, 0.28, 'power3.out');
-  rotRel(tl, bones.armL, rest, { x: -1.15, z: -0.28, y: 0.38 }, 0.22, 0.3, 'power3.in');
-  rotRel(tl, bones.foreArmL, rest, { x: -0.95, z: 0.08 }, 0.2, 0.3, 'power3.in');
-  rotRel(tl, bones.torso, rest, { x: -0.52, y: 0.02, z: 0.2 }, 0.22, 0.28, 'power3.out');
-  rotRel(tl, bones.hips, rest, { x: -0.1, y: -0.18, z: 0.06 }, 0.22, 0.28, 'power3.out');
+  BOWLING_APPROACH_STRIDES.forEach((stride, i) => {
+    const t = strideStart + i * strideDur;
+    rotRel(tl, bones.legR, rest, { x: stride.legR, z: 0.01 }, strideDur, t, 'sine.inOut');
+    rotRel(tl, bones.legL, rest, { x: stride.legL, z: -0.01 }, strideDur, t, 'sine.inOut');
+  });
 
-  // Phase 4 — Whip over the top; elbow extends, wrist passes release point
-  rotRel(tl, bones.armR, rest, { x: 0.72, z: -0.72, y: 0.22 }, 0.15, 0.5, 'power4.in');
-  rotRel(tl, bones.foreArmR, rest, { x: 0.08, z: -0.52 }, 0.13, 0.5, 'power4.in');
-  rotRel(tl, bones.armL, rest, { x: -1.45, z: -0.08, y: 0.22 }, 0.14, 0.5, 'power2.in');
-  rotRel(tl, bones.torso, rest, { x: 0.62, y: -0.08, z: -0.06 }, 0.15, 0.5, 'power4.in');
-  rotRel(tl, bones.hips, rest, { x: 0.18, y: -0.05, z: -0.02 }, 0.14, 0.5, 'power4.in');
-  tl.call(() => onRelease?.(), undefined, 0.56);
-
-  // Phase 5 — Follow-through: arm past hip, body bent toward batsman
-  rotRel(tl, bones.armR, rest, { x: 1.48, z: -1.05, y: 0.38 }, 0.36, 0.62, 'power2.out');
-  rotRel(tl, bones.foreArmR, rest, { x: 0.62, z: -0.62 }, 0.32, 0.62, 'power2.out');
-  rotRel(tl, bones.armL, rest, { x: -0.28, z: 0.18, y: -0.08 }, 0.32, 0.62, 'power2.out');
-  rotRel(tl, bones.torso, rest, { x: 0.92, y: -0.15, z: 0.04 }, 0.36, 0.62, 'power2.out');
-  rotRel(tl, bones.hips, rest, { x: 0.28, y: 0.14, z: 0.02 }, 0.32, 0.62, 'power2.out');
-  rotRel(tl, bones.legL, rest, { x: 0.48, z: -0.02 }, 0.28, 0.62, 'power2.out');
-  rotRel(tl, bones.legR, rest, { x: -0.08, z: 0.18 }, 0.3, 0.64, 'power2.out');
-
-  // Drive through the crease toward the striker
-  tl.to(
+  tl.fromTo(
     group.position,
-    { x: scenePositions.bowlerCreaseX - 0.7, duration: 0.38, ease: 'power1.out' },
-    0.34,
+    { x: scenePositions.bowlerStartX, y: 0, z: scenePositions.bowlerStartZ },
+    {
+      x: scenePositions.bowlerCreaseX - 0.55,
+      y: 0,
+      z: scenePositions.bowlerStartZ,
+      duration: BOWLING_APPROACH_DURATION + 0.35,
+      ease: 'power1.inOut',
+    },
+    0,
   );
-  tl.to(group.rotation, { y: faceY + 0.12, duration: 0.22, ease: 'power2.out' }, 0.38);
-  tl.to(group.rotation, { y: faceY, duration: 0.28, ease: 'power2.inOut' }, 0.72);
 
+  // ── Phase 1 — Gather: coil from side-on into delivery stride ──
+  rotRel(tl, bones.hips, rest, { y: 1.05, x: 0.14, z: 0.05 }, 0.12, t0, 'power2.out');
+  rotRel(tl, bones.torso, rest, { y: 1.08, x: 0.18, z: 0.08 }, 0.12, t0, 'power2.out');
+  rotRel(tl, bones.legR, rest, { x: 0.48, z: 0.04 }, 0.12, t0, 'power2.out');
+  rotRel(tl, bones.legL, rest, { x: 0.22, z: -0.04 }, 0.12, t0, 'power2.out');
+  rotRel(tl, bones.armL, rest, { x: 0.62, z: -0.35, y: 0.14 }, 0.12, t0, 'power2.out');
+  rotRel(tl, bones.foreArmL, rest, { x: -0.35, z: -0.08 }, 0.1, t0, 'power2.out');
+  rotRel(tl, bones.armR, rest, { x: -0.35, z: 0.12, y: -0.12 }, 0.12, t0, 'power2.out');
+  rotRel(tl, bones.foreArmR, rest, { x: -0.85, z: 0.06 }, 0.1, t0, 'power2.out');
+
+  // ── Phase 2 — Bound: back foot braced, bowling arm climbs (OTM load) ──
+  rotRel(tl, bones.legR, rest, { x: 0.68, z: 0.02 }, 0.14, t0 + 0.1, 'power2.inOut');
+  rotRel(tl, bones.legL, rest, { x: 0.04, z: -0.02 }, 0.12, t0 + 0.1, 'power2.inOut');
+  rotRel(tl, bones.armR, rest, { x: -1.45, z: 0.04, y: -0.14 }, 0.18, t0 + 0.1, 'power2.out');
+  rotRel(tl, bones.foreArmR, rest, { x: -0.88, z: 0.02 }, 0.18, t0 + 0.1, 'power2.out');
+  rotRel(tl, bones.armL, rest, { x: 0.42, z: -0.42, y: 0.16 }, 0.12, t0 + 0.1, 'power2.inOut');
+  rotRel(tl, bones.torso, rest, { x: -0.12, y: 0.92, z: 0.1 }, 0.14, t0 + 0.1, 'power2.out');
+
+  // ── Phase 3 — Front-foot plant & hip-shoulder separation ──
+  rotRel(tl, bones.legL, rest, { x: 0.72, z: -0.08 }, 0.18, t0 + 0.24, 'power3.in');
+  rotRel(tl, bones.legR, rest, { x: 0.06, z: -0.06 }, 0.16, t0 + 0.24, 'power3.in');
+  rotRel(tl, bones.armL, rest, { x: -0.68, z: -0.1, y: 0.2 }, 0.16, t0 + 0.26, 'power3.in');
+  rotRel(tl, bones.foreArmL, rest, { x: -0.58, z: 0.04 }, 0.14, t0 + 0.26, 'power3.in');
+  rotRel(tl, bones.armR, rest, { x: -1.92, z: 0.02, y: -0.16 }, 0.18, t0 + 0.24, 'power3.out');
+  rotRel(tl, bones.foreArmR, rest, { x: -1.05, z: 0.0 }, 0.18, t0 + 0.24, 'power3.out');
+  rotRel(tl, bones.torso, rest, { x: -0.28, y: 0.72, z: 0.12 }, 0.16, t0 + 0.24, 'power3.out');
+  rotRel(tl, bones.hips, rest, { x: -0.02, y: 0.82, z: 0.04 }, 0.14, t0 + 0.24, 'power3.out');
+
+  // ── Phase 4 — Release: arm comes over the top (cricket whip, not javelin throw) ──
+  rotRel(tl, bones.armR, rest, { x: -0.15, z: -0.12, y: -0.04 }, 0.12, t0 + 0.4, 'power4.in');
+  rotRel(tl, bones.foreArmR, rest, { x: -0.35, z: -0.18 }, 0.1, t0 + 0.4, 'power4.in');
+  rotRel(tl, bones.armL, rest, { x: -0.82, z: -0.02, y: 0.14 }, 0.1, t0 + 0.4, 'power2.in');
+  rotRel(tl, bones.torso, rest, { x: 0.28, y: 0.58, z: 0.04 }, 0.12, t0 + 0.4, 'power4.in');
+  rotRel(tl, bones.hips, rest, { x: 0.1, y: 0.68, z: 0.02 }, 0.1, t0 + 0.4, 'power4.in');
+  tl.call(() => onRelease?.(), undefined, BOWLING_RELEASE_TIME);
+
+  // ── Phase 5 — Follow-through down the pitch ──
+  rotRel(tl, bones.armR, rest, { x: 0.72, z: -0.22, y: 0.08 }, 0.34, t0 + 0.52, 'power2.out');
+  rotRel(tl, bones.foreArmR, rest, { x: 0.28, z: -0.24 }, 0.3, t0 + 0.52, 'power2.out');
+  rotRel(tl, bones.armL, rest, { x: -0.08, z: 0.06, y: -0.02 }, 0.28, t0 + 0.52, 'power2.out');
+  rotRel(tl, bones.torso, rest, { x: 0.48, y: 0.42, z: 0.02 }, 0.32, t0 + 0.52, 'power2.out');
+  rotRel(tl, bones.hips, rest, { x: 0.14, y: 0.52, z: 0.01 }, 0.28, t0 + 0.52, 'power2.out');
+  rotRel(tl, bones.legL, rest, { x: 0.38, z: -0.02 }, 0.24, t0 + 0.5, 'power2.out');
+  rotRel(tl, bones.legR, rest, { x: -0.02, z: 0.1 }, 0.26, t0 + 0.52, 'power2.out');
+
+  return tl;
+}
+
+/** @deprecated Use buildFullBowlingDeliveryTimeline for continuous delivery. */
+export function buildBowlingTimeline(
+  bones: PlayerBones,
+  rest: BoneRestMap,
+  group: THREE.Object3D,
+  onRelease?: () => void,
+): gsap.core.Timeline {
+  return buildFullBowlingDeliveryTimeline(bones, rest, group, onRelease);
+}
+
+/** @deprecated Merged into buildFullBowlingDeliveryTimeline approach phase. */
+export function buildRunUpFinishPose(bones: PlayerBones, rest: BoneRestMap): gsap.core.Timeline {
+  const tl = gsap.timeline();
+  rotRel(tl, bones.legR, rest, { x: 0.48, z: 0.05 }, 0.08, 0, 'power2.out');
+  rotRel(tl, bones.legL, rest, { x: 0.18, z: -0.04 }, 0.08, 0, 'power2.out');
   return tl;
 }
 
@@ -206,5 +312,6 @@ export function buildProceduralRunTimeline(
 }
 
 export const MIN_RUN_UP_MS = 800;
-export const MIN_BOWL_MS = 900;
+export const MIN_BOWL_MS = 1400;
+export const MIN_DELIVERY_MS = 2300;
 export const MIN_BAT_MS = 500;
