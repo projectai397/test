@@ -3,6 +3,8 @@ import type { BowlerControllerHandle } from './BowlerController';
 import type { BatterControllerHandle } from './BatterController';
 import type { KeeperControllerHandle } from './KeeperController';
 import type { NonStrikerControllerHandle } from './NonStrikerController';
+import type { FielderControllerHandle } from './FielderController';
+import type { UmpireControllerHandle } from './UmpireController';
 import type { BallControllerHandle } from './BallController';
 import type { StumpsHandle } from './Stumps';
 import {
@@ -19,6 +21,8 @@ interface AnimationOrchestratorProps {
   batterRef: React.RefObject<BatterControllerHandle>;
   keeperRef: React.RefObject<KeeperControllerHandle>;
   nonStrikerRef: React.RefObject<NonStrikerControllerHandle>;
+  fieldersRef: React.RefObject<(FielderControllerHandle | null)[]>;
+  umpireRef: React.RefObject<UmpireControllerHandle>;
   ballRef: React.RefObject<BallControllerHandle>;
   stumpsRef: React.RefObject<StumpsHandle>;
 }
@@ -28,8 +32,19 @@ interface SceneRefs {
   batterRef: React.RefObject<BatterControllerHandle>;
   keeperRef: React.RefObject<KeeperControllerHandle>;
   nonStrikerRef: React.RefObject<NonStrikerControllerHandle>;
+  fieldersRef: React.RefObject<(FielderControllerHandle | null)[]>;
+  umpireRef: React.RefObject<UmpireControllerHandle>;
   ballRef: React.RefObject<BallControllerHandle>;
   stumpsRef: React.RefObject<StumpsHandle>;
+}
+
+function forEachFielder(
+  ref: React.RefObject<(FielderControllerHandle | null)[]>,
+  fn: (fielder: FielderControllerHandle) => void,
+) {
+  ref.current?.forEach((fielder) => {
+    if (fielder) fn(fielder);
+  });
 }
 
 async function waitForSceneReady(refs: SceneRefs, maxMs = 15000): Promise<boolean> {
@@ -97,11 +112,14 @@ async function runDeliveryPipeline(event: CricketBallEvent, refs: SceneRefs): Pr
     batter.reset();
     refs.keeperRef.current?.reset();
     refs.nonStrikerRef.current?.reset();
+    forEachFielder(refs.fieldersRef, (f) => f.reset());
+    refs.umpireRef.current?.reset();
     ball.reset();
 
     refs.keeperRef.current?.playCrouch();
     batter.playStance();
     refs.nonStrikerRef.current?.playWatchBall();
+    forEachFielder(refs.fieldersRef, (f) => f.playWatchBall());
 
     await new Promise((r) => setTimeout(r, 350));
 
@@ -118,6 +136,7 @@ async function runDeliveryPipeline(event: CricketBallEvent, refs: SceneRefs): Pr
 
     setAnimationState('ball_released');
     refs.nonStrikerRef.current?.playWatchBall();
+    forEachFielder(refs.fieldersRef, (f) => f.playWatchBall());
     await ball.waitUntilNearBatter(6000);
 
     setAnimationState('batter_shot');
@@ -146,6 +165,8 @@ async function runDeliveryPipeline(event: CricketBallEvent, refs: SceneRefs): Pr
     batter.reset();
     refs.keeperRef.current?.reset();
     refs.nonStrikerRef.current?.reset();
+    forEachFielder(refs.fieldersRef, (f) => f.reset());
+    refs.umpireRef.current?.reset();
     ball.reset();
     refs.stumpsRef.current?.reset();
 

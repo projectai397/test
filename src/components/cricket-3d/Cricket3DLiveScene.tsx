@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { useGLTF, Html } from '@react-three/drei';
@@ -10,6 +10,7 @@ import { BowlerController, type BowlerControllerHandle } from './BowlerControlle
 import { BatterController, type BatterControllerHandle } from './BatterController';
 import { KeeperController, type KeeperControllerHandle } from './KeeperController';
 import { NonStrikerController, type NonStrikerControllerHandle } from './NonStrikerController';
+import { FielderController, type FielderControllerHandle } from './FielderController';
 import { UmpireController, type UmpireControllerHandle } from './UmpireController';
 import { OptionalModelCharacter } from './OptionalModelCharacter';
 import { BallController, type BallControllerHandle } from './BallController';
@@ -20,12 +21,16 @@ import { LiveOverlay } from './LiveOverlay';
 import { MotionRafSync } from './MotionRafSync';
 import { useCricketAnimationState } from '../../hooks/useCricketAnimationState';
 import { useCricketWebSocket } from '../../hooks/useCricketWebSocket';
-import { defaultBallEvent } from '../../utils/defaultBallEvent';
+import { buildDefaultBallEvent } from '../../utils/defaultBallEvent';
 import { scenePositions, cameraDefaults } from '../../utils/animationTimings';
 import { MODEL_PATHS } from '../../utils/playerModels';
+import { resolveFieldPosition } from '../../utils/fieldPositions';
 import { isGlbAvailable } from '../../utils/modelAvailability';
 import { auditExpectedModels, getModelInstallMessage, logModelAudit } from '../../utils/modelAudit';
+import { loadMatchConfig } from '../../config/loadMatchConfig';
+import { PITCH_FACING } from '../../utils/playerFacing';
 import type { CricketBallEvent } from '../../types/cricket-ball-event';
+import type { MatchConfig } from '../../types/match-config';
 import type { CameraViewPreset } from '../../utils/cameraPresets';
 
 export interface Cricket3DLiveSceneProps {
@@ -34,12 +39,10 @@ export interface Cricket3DLiveSceneProps {
   autoPlayDemo?: boolean;
   className?: string;
   defaultCameraAngle?: CameraViewPreset;
-  /** GLB URL override — defaults to role-specific cricket models in public/models/ */
+  matchConfig?: MatchConfig;
+  /** GLB URL override — defaults to cricket-player.glb for all roles */
   playerModelUrl?: string;
-  /** Umpire GLB override — defaults to /models/cricket-umpire.glb */
   umpireModelUrl?: string;
-  /** Wicket keeper GLB override — defaults to /models/cricket-keeper.glb */
-  keeperModelUrl?: string;
 }
 
 function SceneLoader() {
@@ -52,28 +55,35 @@ function SceneLoader() {
 
 /** Static scene — no Zustand subscription so delivery motion is not interrupted by re-renders. */
 function CricketScene({
+  matchConfig,
   bowlerRef,
   batterRef,
   keeperRef,
   nonStrikerRef,
+  fieldersRef,
   umpireRef,
   ballRef,
   stumpsRef,
   playerModelUrl,
   umpireModelUrl,
-  keeperModelUrl,
 }: {
+  matchConfig: MatchConfig;
   bowlerRef: React.RefObject<BowlerControllerHandle>;
   batterRef: React.RefObject<BatterControllerHandle>;
   keeperRef: React.RefObject<KeeperControllerHandle>;
   nonStrikerRef: React.RefObject<NonStrikerControllerHandle>;
+  fieldersRef: React.RefObject<(FielderControllerHandle | null)[]>;
   umpireRef: React.RefObject<UmpireControllerHandle>;
   ballRef: React.RefObject<BallControllerHandle>;
   stumpsRef: React.RefObject<StumpsHandle>;
   playerModelUrl?: string;
   umpireModelUrl?: string;
-  keeperModelUrl?: string;
 }) {
+  const modelUrl = playerModelUrl ?? MODEL_PATHS.cricketPlayer;
+  const teamA = matchConfig.teams.teamA;
+  const teamB = matchConfig.teams.teamB;
+  const umpire = matchConfig.umpire;
+
   return (
     <>
       <color attach="background" args={['#87a8c4']} />
@@ -103,15 +113,61 @@ function CricketScene({
       <Stumps ref={stumpsRef} position={[scenePositions.strikerEndX, 0, 0]} />
       <Stumps position={[scenePositions.nonStrikerEndX, 0, 0]} />
 
-      <BowlerController ref={bowlerRef} modelUrl={playerModelUrl} />
-      <BatterController ref={batterRef} modelUrl={playerModelUrl} />
-      <KeeperController ref={keeperRef} modelUrl={keeperModelUrl} />
-      <NonStrikerController ref={nonStrikerRef} modelUrl={playerModelUrl} />
+      <BowlerController
+        ref={bowlerRef}
+        name={teamA.bowler.name}
+        jerseyColor={teamA.kitColor}
+        showCap={teamA.bowler.showCap}
+        modelUrl={modelUrl}
+      />
+      <BatterController
+        ref={batterRef}
+        name={teamB.batsman.name}
+        jerseyColor={teamB.kitColor}
+        modelUrl={modelUrl}
+      />
+      <KeeperController
+        ref={keeperRef}
+        name={teamA.keeper.name}
+        jerseyColor={teamA.kitColor}
+        modelUrl={modelUrl}
+      />
+      <NonStrikerController
+        ref={nonStrikerRef}
+        name={teamB.nonStriker.name}
+        jerseyColor={teamB.kitColor}
+        modelUrl={modelUrl}
+      />
+
+      {teamA.fielders.map((fielder, index) => {
+        const pos = resolveFieldPosition(fielder);
+        return (
+          <FielderController
+            key={`fielder-${fielder.position}-${index}`}
+            ref={(el) => {
+              if (fieldersRef.current) fieldersRef.current[index] = el;
+            }}
+            name={fielder.name}
+            jerseyColor={teamA.kitColor}
+            x={pos.x}
+            z={pos.z}
+            facingY={pos.facingY}
+            modelUrl={modelUrl}
+          />
+        );
+      })}
+
       <OptionalModelCharacter
         modelUrl={umpireModelUrl ?? MODEL_PATHS.cricketUmpire}
         label="umpire"
       >
-        <UmpireController ref={umpireRef} modelUrl={umpireModelUrl} />
+        <UmpireController
+          ref={umpireRef}
+          name={umpire.name}
+          modelUrl={umpireModelUrl ?? MODEL_PATHS.cricketPlayer}
+          position={umpire.position}
+          facingY={PITCH_FACING.squareLegUmpire}
+        />
       </OptionalModelCharacter>
 
       <Physics gravity={[0, -9.81, 0]} timeStep="vary" interpolate={true}>
@@ -124,6 +180,8 @@ function CricketScene({
         batterRef={batterRef}
         keeperRef={keeperRef}
         nonStrikerRef={nonStrikerRef}
+        fieldersRef={fieldersRef}
+        umpireRef={umpireRef}
         ballRef={ballRef}
         stumpsRef={stumpsRef}
       />
@@ -133,18 +191,30 @@ function CricketScene({
 
 export function Cricket3DLiveScene({
   wsUrl,
-  fallbackEvent = defaultBallEvent,
+  fallbackEvent,
   autoPlayDemo = true,
   className = '',
   defaultCameraAngle = 'free',
+  matchConfig: matchConfigProp,
   playerModelUrl,
   umpireModelUrl,
-  keeperModelUrl,
 }: Cricket3DLiveSceneProps) {
+  const matchConfig = useMemo(
+    () => matchConfigProp ?? loadMatchConfig(),
+    [matchConfigProp],
+  );
+  const resolvedFallback = useMemo(
+    () => fallbackEvent ?? buildDefaultBallEvent(matchConfig),
+    [fallbackEvent, matchConfig],
+  );
+
   const bowlerRef = useRef<BowlerControllerHandle>(null);
   const batterRef = useRef<BatterControllerHandle>(null);
   const keeperRef = useRef<KeeperControllerHandle>(null);
   const nonStrikerRef = useRef<NonStrikerControllerHandle>(null);
+  const fieldersRef = useRef<(FielderControllerHandle | null)[]>(
+    new Array(matchConfig.teams.teamA.fielders.length).fill(null),
+  );
   const umpireRef = useRef<UmpireControllerHandle>(null);
   const ballRef = useRef<BallControllerHandle>(null);
   const stumpsRef = useRef<StumpsHandle>(null);
@@ -165,9 +235,7 @@ export function Cricket3DLiveScene({
 
   useEffect(() => {
     setCameraViewPreset(defaultCameraAngle);
-    useGLTF.preload('/models/cricket-player.glb');
-    useGLTF.preload('/models/cricket-batsman.glb');
-    useGLTF.preload('/models/cricket-keeper.glb');
+    useGLTF.preload(playerModelUrl ?? MODEL_PATHS.cricketPlayer);
 
     const umpireUrl = umpireModelUrl ?? MODEL_PATHS.cricketUmpire;
     if (umpireUrl !== MODEL_PATHS.cricketPlayer) {
@@ -180,7 +248,7 @@ export function Cricket3DLiveScene({
       logModelAudit(entries);
       setModelError(getModelInstallMessage(entries));
     });
-  }, [defaultCameraAngle, setCameraViewPreset, umpireModelUrl]);
+  }, [defaultCameraAngle, setCameraViewPreset, umpireModelUrl, playerModelUrl]);
 
   useCricketWebSocket({ wsUrl, autoPlayDemo });
 
@@ -213,23 +281,24 @@ export function Cricket3DLiveScene({
       >
         <Suspense fallback={<SceneLoader />}>
           <CricketScene
+            matchConfig={matchConfig}
             bowlerRef={bowlerRef}
             batterRef={batterRef}
             keeperRef={keeperRef}
             nonStrikerRef={nonStrikerRef}
+            fieldersRef={fieldersRef}
             umpireRef={umpireRef}
             ballRef={ballRef}
             stumpsRef={stumpsRef}
             playerModelUrl={playerModelUrl}
             umpireModelUrl={umpireModelUrl}
-            keeperModelUrl={keeperModelUrl}
           />
         </Suspense>
       </Canvas>
 
       <LiveOverlay
         connectionStatus={connectionStatus}
-        currentEvent={currentBallEvent ?? fallbackEvent}
+        currentEvent={currentBallEvent ?? resolvedFallback}
         resultDisplay={resultDisplay}
         showWaitingText={showWaitingText}
         queuedCount={queuedCount}

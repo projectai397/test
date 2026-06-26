@@ -29,6 +29,8 @@ export interface BowlerControllerHandle {
 
 interface BowlerControllerProps {
   name?: string;
+  jerseyColor: string;
+  showCap?: boolean;
   modelUrl?: string;
 }
 
@@ -38,7 +40,7 @@ function setBowlerHome(group: THREE.Group) {
 }
 
 export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControllerProps>(
-  function BowlerController({ name = 'B Stokes', modelUrl }, ref) {
+  function BowlerController({ name = 'B Stokes', jerseyColor, showCap, modelUrl }, ref) {
     const playerRef = useRef<PlayerModelHandle>(null);
     const groupRef = useRef<THREE.Group>(null);
     const timelineRef = useRef<ReturnType<typeof buildBowlingTimeline> | null>(null);
@@ -163,7 +165,14 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
 
     return (
       <group ref={groupRef}>
-        <PlayerModel ref={playerRef} role="bowler" jerseyColor="#dc2626" label={name} modelUrl={modelUrl} />
+        <PlayerModel
+          ref={playerRef}
+          role="bowler"
+          jerseyColor={jerseyColor}
+          showCap={showCap}
+          label={name}
+          modelUrl={modelUrl}
+        />
       </group>
     );
   },

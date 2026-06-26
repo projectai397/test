@@ -14,6 +14,7 @@ export interface KeeperControllerHandle {
 
 interface KeeperControllerProps {
   name?: string;
+  jerseyColor: string;
   modelUrl?: string;
 }
 
@@ -27,7 +28,7 @@ function setKeeperHome(group: THREE.Group) {
 }
 
 export const KeeperController = forwardRef<KeeperControllerHandle, KeeperControllerProps>(
-  function KeeperController({ name = 'J Smith', modelUrl }, ref) {
+  function KeeperController({ name = 'J Smith', jerseyColor, modelUrl }, ref) {
     const playerRef = useRef<PlayerModelHandle>(null);
     const groupRef = useRef<THREE.Group>(null);
     const timelineRef = useRef<gsap.core.Timeline | null>(null);
@@ -71,7 +72,7 @@ export const KeeperController = forwardRef<KeeperControllerHandle, KeeperControl
 
     return (
       <group ref={groupRef}>
-        <PlayerModel ref={playerRef} role="keeper" jerseyColor="#dc2626" label={name} modelUrl={modelUrl} />
+        <PlayerModel ref={playerRef} role="keeper" jerseyColor={jerseyColor} label={name} modelUrl={modelUrl} />
       </group>
     );
   },

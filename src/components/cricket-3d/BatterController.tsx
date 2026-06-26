@@ -22,6 +22,7 @@ export interface BatterControllerHandle {
 
 interface BatterControllerProps {
   name?: string;
+  jerseyColor: string;
   modelUrl?: string;
 }
 
@@ -31,7 +32,7 @@ function setBatterHome(group: THREE.Group) {
 }
 
 export const BatterController = forwardRef<BatterControllerHandle, BatterControllerProps>(
-  function BatterController({ name = 'T Blundell', modelUrl }, ref) {
+  function BatterController({ name = 'T Blundell', jerseyColor, modelUrl }, ref) {
     const playerRef = useRef<PlayerModelHandle>(null);
     const groupRef = useRef<THREE.Group>(null);
     const timelineRef = useRef<gsap.core.Timeline | null>(null);
@@ -112,7 +113,7 @@ export const BatterController = forwardRef<BatterControllerHandle, BatterControl
         <PlayerModel
           ref={playerRef}
           role="batter"
-          jerseyColor="#dc2626"
+          jerseyColor={jerseyColor}
           showBat
           label={name}
           modelUrl={modelUrl}

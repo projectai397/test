@@ -33,19 +33,24 @@ export function attachCricketGear(
   gearRoot.name = 'CricketGearRoot';
 
   if (role === 'umpire') {
-    const hatMat = mat('#f8f8f5');
+    const capMat = mat('#ffffff');
     const coatMat = mat('#1a1a1a');
     if (bones.head) {
-      const hat = new THREE.Group();
-      hat.position.set(0, 0.11, 0);
-      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.11, 0.07, 16), hatMat);
-      crown.position.y = 0.02;
-      crown.castShadow = true;
-      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.015, 20), hatMat);
-      brim.position.y = -0.02;
-      brim.castShadow = true;
-      hat.add(crown, brim);
-      bones.head.add(hat);
+      const cap = new THREE.Group();
+      cap.name = 'UmpireCap';
+      cap.position.set(0, 0.12, 0);
+      const dome = new THREE.Mesh(
+        new THREE.SphereGeometry(0.1, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.45),
+        capMat,
+      );
+      dome.castShadow = true;
+      cap.add(dome);
+      bones.head.add(cap);
+      root.traverse((obj) => {
+        if (!(obj instanceof THREE.Mesh)) return;
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        if (mats.some((m) => /hair/i.test(m.name ?? ''))) obj.visible = false;
+      });
     }
     if (bones.torso) {
       const coat = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.62, 0.28), coatMat);

@@ -12,6 +12,7 @@ export interface NonStrikerControllerHandle {
 
 interface NonStrikerControllerProps {
   name?: string;
+  jerseyColor: string;
   modelUrl?: string;
 }
 
@@ -23,7 +24,7 @@ function setNonStrikerHome(group: THREE.Group) {
 export const NonStrikerController = forwardRef<
   NonStrikerControllerHandle,
   NonStrikerControllerProps
->(function NonStrikerController({ name = "W O'Rourke", modelUrl }, ref) {
+>(function NonStrikerController({ name = "W O'Rourke", jerseyColor, modelUrl }, ref) {
   const playerRef = useRef<PlayerModelHandle>(null);
   const groupRef = useRef<THREE.Group>(null);
   const timelineRef = useRef<ReturnType<typeof buildWatchBallTimeline> | null>(null);
@@ -49,7 +50,7 @@ export const NonStrikerController = forwardRef<
 
   return (
     <group ref={groupRef}>
-      <PlayerModel ref={playerRef} role="non_striker" jerseyColor="#dc2626" label={name} modelUrl={modelUrl} />
+      <PlayerModel ref={playerRef} role="non_striker" jerseyColor={jerseyColor} label={name} modelUrl={modelUrl} />
     </group>
   );
 });

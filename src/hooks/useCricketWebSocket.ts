@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { CricketBallEvent } from '../types/cricket-ball-event';
-import { defaultBallEvent } from '../utils/defaultBallEvent';
+import { buildDefaultBallEvent } from '../utils/defaultBallEvent';
+import { loadMatchConfig } from '../config/loadMatchConfig';
 import { animationTimings } from '../utils/animationTimings';
 import { useCricketAnimationState } from './useCricketAnimationState';
 
@@ -39,6 +40,7 @@ export function useCricketWebSocket({
 
   useEffect(() => {
     mounted.current = true;
+    const demoEvent = buildDefaultBallEvent(loadMatchConfig());
 
     const connect = () => {
       if (!mounted.current) return;
@@ -56,7 +58,7 @@ export function useCricketWebSocket({
         if (autoPlayDemo && !demoPlayed.current) {
           demoPlayed.current = true;
           setTimeout(() => {
-            if (mounted.current) enqueueEvent(defaultBallEvent);
+            if (mounted.current) enqueueEvent(demoEvent);
           }, 1200);
         }
       };
@@ -89,7 +91,7 @@ export function useCricketWebSocket({
           demoPlayed.current = true;
           setTimeout(() => {
             if (mounted.current) {
-              enqueueEvent(defaultBallEvent);
+              enqueueEvent(demoEvent);
             }
           }, animationTimings.demoOfflineDelay * 1000);
         }

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export type PlayerRole = 'bowler' | 'batter' | 'keeper' | 'non_striker' | 'umpire';
+export type PlayerRole = 'bowler' | 'batter' | 'keeper' | 'non_striker' | 'fielder' | 'umpire';
 export type ModelProfile = 'mixamo' | 'cricket' | 'static';
 
 export interface PlayerModelConfig {
@@ -54,28 +54,26 @@ const ROLE_CONFIG: Record<PlayerRole, PlayerModelConfig> = {
   bowler: {
     ...CRICKET_BASE,
     url: MODEL_PATHS.cricketPlayer,
-    color: TEAM_KIT_RED,
-    showCap: true,
   },
   batter: {
     ...CRICKET_BASE,
     url: MODEL_PATHS.cricketPlayer,
-    color: TEAM_KIT_RED,
   },
   keeper: {
     ...CRICKET_BASE,
     url: MODEL_PATHS.cricketPlayer,
-    color: TEAM_KIT_RED,
   },
   non_striker: {
     ...CRICKET_BASE,
     url: MODEL_PATHS.cricketPlayer,
-    color: TEAM_KIT_RED,
+  },
+  fielder: {
+    ...CRICKET_BASE,
+    url: MODEL_PATHS.cricketPlayer,
   },
   umpire: {
     ...CRICKET_BASE,
     url: MODEL_PATHS.cricketPlayer,
-    color: '#1f2937',
     skipKitRecolor: true,
     minimalGear: false,
   },
