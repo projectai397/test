@@ -11,7 +11,7 @@ import {
 import { scenePositions } from '../../utils/animationTimings';
 import { PITCH_FACING } from '../../utils/playerFacing';
 import { getBowlerRunUpDistance, syncRunLocomotion } from '../../utils/locomotionSync';
-import { animatePosition, cancelMotionsFor, waitUntilReady } from '../../utils/motionRunner';
+import { animatePosition, cancelMotionsFor, waitMs, waitUntilReady } from '../../utils/motionRunner';
 
 export interface AnimationCompletion {
   ok: boolean;
@@ -98,6 +98,13 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
         const group = groupRef.current!;
 
         timelineRef.current?.kill();
+        cancelMotionsFor(group);
+
+        // Brief gather at the crease after the run-up
+        player.endProcedural();
+        player.playClip(CLIPS.idle, true, 0.12);
+        await waitMs(140);
+
         const rest = player.beginProcedural();
 
         const tl = buildBowlingTimeline(player.getParts(), rest, group, onRelease);
