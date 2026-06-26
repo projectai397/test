@@ -4,13 +4,14 @@ import { PlayerModel, type PlayerModelHandle } from './PlayerModel';
 import { CLIPS } from '../../utils/playerModels';
 import {
   buildBowlingTimeline,
+  buildProceduralRunTimeline,
   MIN_BOWL_MS,
   MIN_RUN_UP_MS,
   timelineToPromise,
 } from '../../utils/cricketProcedural';
 import { scenePositions } from '../../utils/animationTimings';
 import { PITCH_FACING } from '../../utils/playerFacing';
-import { getBowlerRunUpDistance, syncRunLocomotion } from '../../utils/locomotionSync';
+import { getBowlerRunUpDistance, syncCricketWalkRunUp, syncRunLocomotion } from '../../utils/locomotionSync';
 import { animatePosition, cancelMotionsFor, waitMs, waitUntilReady } from '../../utils/motionRunner';
 
 export interface AnimationCompletion {
@@ -69,16 +70,50 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
         cancelMotionsFor(group);
         player.endProcedural();
         setBowlerHome(group);
-        const runSync = syncRunLocomotion(getBowlerRunUpDistance());
-        player.playClip(CLIPS.run, true, 0.15, runSync.clipTimeScale);
+        const isCricket = player.getModelProfile() === 'cricket';
+        const useWalkClip = isCricket && player.hasClip('walk');
 
-        await animatePosition(
-          group,
-          { x: scenePositions.bowlerCreaseX, z: scenePositions.bowlerStartZ, y: 0 },
-          runSync.duration,
-          { ease: 'linear', yBob: runSync.yBob },
-        );
-        player.stopClips();
+        if (useWalkClip) {
+          const walkSync = syncCricketWalkRunUp(getBowlerRunUpDistance());
+          player.playClip(CLIPS.walk, true, 0.15, walkSync.clipTimeScale);
+          await animatePosition(
+            group,
+            { x: scenePositions.bowlerCreaseX, z: scenePositions.bowlerStartZ, y: 0 },
+            walkSync.duration,
+            { ease: 'linear', yBob: walkSync.yBob },
+          );
+          player.stopClips();
+        } else if (isCricket) {
+          const runSync = syncRunLocomotion(getBowlerRunUpDistance());
+          const rest = player.beginProcedural();
+          const runTl = buildProceduralRunTimeline(
+            player.getParts(),
+            rest,
+            runSync.duration,
+            runSync.cycles,
+          );
+          timelineRef.current = runTl as unknown as ReturnType<typeof buildBowlingTimeline>;
+          await Promise.all([
+            animatePosition(
+              group,
+              { x: scenePositions.bowlerCreaseX, z: scenePositions.bowlerStartZ, y: 0 },
+              runSync.duration,
+              { ease: 'linear', yBob: runSync.yBob },
+            ),
+            timelineToPromise(runTl),
+          ]);
+          player.endProcedural();
+        } else {
+          const runSync = syncRunLocomotion(getBowlerRunUpDistance());
+          player.playClip(CLIPS.run, true, 0.15, runSync.clipTimeScale);
+          await animatePosition(
+            group,
+            { x: scenePositions.bowlerCreaseX, z: scenePositions.bowlerStartZ, y: 0 },
+            runSync.duration,
+            { ease: 'linear', yBob: runSync.yBob },
+          );
+          player.stopClips();
+        }
 
         const durationMs = performance.now() - start;
         return { ok: durationMs >= MIN_RUN_UP_MS, durationMs };

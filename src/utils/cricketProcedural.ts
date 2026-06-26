@@ -173,6 +173,38 @@ export function timelineToPromise(tl: gsap.core.Timeline): Promise<void> {
   });
 }
 
+/** In-place run cycle for cricket rigs without a Mixamo Run clip. */
+export function buildProceduralRunTimeline(
+  bones: PlayerBones,
+  rest: BoneRestMap,
+  duration: number,
+  cycles: number,
+): gsap.core.Timeline {
+  const tl = gsap.timeline();
+  const strideCount = Math.max(Math.round(cycles * 2), 4);
+  const half = duration / strideCount;
+
+  for (let i = 0; i < strideCount; i++) {
+    const t = i * half;
+    const rightForward = i % 2 === 0;
+    if (rightForward) {
+      rotRel(tl, bones.legR, rest, { x: 0.58, z: 0.06 }, half, t, 'sine.inOut');
+      rotRel(tl, bones.legL, rest, { x: -0.22, z: -0.04 }, half, t, 'sine.inOut');
+      rotRel(tl, bones.armL, rest, { x: 0.35, z: -0.18 }, half, t, 'sine.inOut');
+      rotRel(tl, bones.armR, rest, { x: -0.3, z: 0.14 }, half, t, 'sine.inOut');
+      rotRel(tl, bones.torso, rest, { x: 0.06, y: 0.04 }, half, t, 'sine.inOut');
+    } else {
+      rotRel(tl, bones.legL, rest, { x: 0.58, z: -0.06 }, half, t, 'sine.inOut');
+      rotRel(tl, bones.legR, rest, { x: -0.22, z: 0.04 }, half, t, 'sine.inOut');
+      rotRel(tl, bones.armR, rest, { x: 0.35, z: 0.18 }, half, t, 'sine.inOut');
+      rotRel(tl, bones.armL, rest, { x: -0.3, z: -0.14 }, half, t, 'sine.inOut');
+      rotRel(tl, bones.torso, rest, { x: 0.06, y: -0.04 }, half, t, 'sine.inOut');
+    }
+  }
+
+  return tl;
+}
+
 export const MIN_RUN_UP_MS = 800;
 export const MIN_BOWL_MS = 900;
 export const MIN_BAT_MS = 500;

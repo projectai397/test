@@ -8,7 +8,9 @@
     "dev:client": "vite",
     "dev:server": "tsx server/mock-ws-server.ts",
     "build": "tsc && vite build",
-    "download:models": "node scripts/download-models.mjs"
+    "install:models": "node scripts/install-cricket-models.mjs",
+    "install:umpire": "node scripts/install-umpire.mjs",
+    "validate:models": "node scripts/validate-models.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.117.3",

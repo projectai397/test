@@ -262,3 +262,20 @@ body,
   font-size: 14px;
   white-space: nowrap;
 }
+
+.model-install-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: min(640px, 92vw);
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: rgba(127, 29, 29, 0.92);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+  pointer-events: none;
+}

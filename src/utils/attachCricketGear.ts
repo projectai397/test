@@ -12,12 +12,19 @@ function mat(color: string) {
   return new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.05 });
 }
 
+interface GearOptions {
+  minimalGear?: boolean;
+  teamColor?: string;
+  showCap?: boolean;
+}
+
 /** Attach helmet, pads, gloves to skeleton bones so they move with animations. */
 export function attachCricketGear(
   root: THREE.Object3D,
   role: PlayerRole,
   bones: GearBones,
   teamColor = '#f5f5f0',
+  options?: GearOptions,
 ) {
   const existing = root.getObjectByName('CricketGearRoot');
   if (existing) existing.removeFromParent();
@@ -25,14 +32,49 @@ export function attachCricketGear(
   const gearRoot = new THREE.Group();
   gearRoot.name = 'CricketGearRoot';
 
+  if (role === 'umpire') {
+    const hatMat = mat('#f8f8f5');
+    const coatMat = mat('#1a1a1a');
+    if (bones.head) {
+      const hat = new THREE.Group();
+      hat.position.set(0, 0.11, 0);
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.11, 0.07, 16), hatMat);
+      crown.position.y = 0.02;
+      crown.castShadow = true;
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.015, 20), hatMat);
+      brim.position.y = -0.02;
+      brim.castShadow = true;
+      hat.add(crown, brim);
+      bones.head.add(hat);
+    }
+    if (bones.torso) {
+      const coat = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.62, 0.28), coatMat);
+      coat.position.set(0, 0.08, 0.02);
+      coat.castShadow = true;
+      bones.torso.add(coat);
+    }
+    root.add(gearRoot);
+    return;
+  }
+
+  const minimal = options?.minimalGear ?? false;
   const padMat = mat('#f0ebe0');
   const gloveMat = mat('#ffffff');
   const helmetMat = mat('#1e3a8a');
-  const capMat = mat(teamColor);
+  const capMat = mat(options?.teamColor ?? teamColor);
 
-  const showHelmet = role === 'batter' || role === 'keeper';
-  const showPads = role === 'batter' || role === 'non_striker';
-  const showCap = role === 'bowler';
+  const showHelmet = !minimal && (role === 'batter' || role === 'keeper');
+  const showPads = !minimal && (role === 'batter' || role === 'non_striker');
+  const showCap = options?.showCap ?? (!minimal && role === 'bowler');
+  const showGloves = role === 'keeper' || role === 'batter' || role === 'bowler';
+
+  if (showCap) {
+    root.traverse((obj) => {
+      if (!(obj instanceof THREE.Mesh)) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      if (mats.some((m) => /hair/i.test(m.name ?? ''))) obj.visible = false;
+    });
+  }
 
   if (bones.head && showHelmet) {
     const g = new THREE.Group();
@@ -47,6 +89,7 @@ export function attachCricketGear(
 
   if (bones.head && showCap) {
     const g = new THREE.Group();
+    g.name = 'CricketCap';
     g.position.set(0, 0.12, 0);
     const dome = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.45), capMat);
     dome.castShadow = true;
@@ -71,7 +114,7 @@ export function attachCricketGear(
   }
 
   const addGlove = (bone: THREE.Object3D | null) => {
-    if (!bone) return;
+    if (!bone || !showGloves) return;
     const glove = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.09, 0.04), gloveMat);
     glove.position.set(0, -0.06, 0.02);
     glove.castShadow = true;

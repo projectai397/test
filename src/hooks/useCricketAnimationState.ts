@@ -75,7 +75,7 @@ export const useCricketAnimationState = create<CricketAnimationStore>((set, get)
   queuedEvents: [],
   processedEventKeys: new Set(),
   cameraMode: 'broadcast',
-  cameraViewPreset: 'broadcast',
+  cameraViewPreset: 'free',
   fixedCameraAngle: false,
   ballPosition: { x: 14, y: 1.5, z: 0 },
   resultDisplay: null,

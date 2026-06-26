@@ -39,10 +39,11 @@ export const KeeperController = forwardRef<KeeperControllerHandle, KeeperControl
     useImperativeHandle(ref, () => ({
       playCrouch: () => {
         const player = playerRef.current;
-        if (!player?.isReady()) return;
+        const parts = player?.getParts();
+        if (!player?.isReady() || !parts?.torso) return;
         timelineRef.current?.kill();
         const rest = player.beginProcedural();
-        timelineRef.current = buildKeeperCrouchTimeline(player.getParts(), rest);
+        timelineRef.current = buildKeeperCrouchTimeline(parts, rest);
       },
 
       playCollect: () =>
@@ -70,7 +71,7 @@ export const KeeperController = forwardRef<KeeperControllerHandle, KeeperControl
 
     return (
       <group ref={groupRef}>
-        <PlayerModel ref={playerRef} role="keeper" jerseyColor="#059669" label={name} modelUrl={modelUrl} />
+        <PlayerModel ref={playerRef} role="keeper" jerseyColor="#dc2626" label={name} modelUrl={modelUrl} />
       </group>
     );
   },

@@ -112,7 +112,7 @@ export const BatterController = forwardRef<BatterControllerHandle, BatterControl
         <PlayerModel
           ref={playerRef}
           role="batter"
-          jerseyColor="#2563eb"
+          jerseyColor="#dc2626"
           showBat
           label={name}
           modelUrl={modelUrl}

@@ -15,7 +15,7 @@ interface PlayerModelProps {
   modelUrl?: string;
 }
 
-/** Fully rigged 3D GLB human (Mixamo Soldier + cricket kit). Pass modelUrl for a custom cricket GLB. */
+/** Rigged cricket player GLB per role (see `npm run install:models`). */
 export const PlayerModel = forwardRef<PlayerModelHandle, PlayerModelProps>(
   function PlayerModel({ role, jerseyColor, showBat, label, modelUrl }, ref) {
     const base = getPlayerModelConfig(role, modelUrl);

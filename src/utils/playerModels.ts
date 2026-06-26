@@ -1,23 +1,35 @@
 import * as THREE from 'three';
 
-export type PlayerRole = 'bowler' | 'batter' | 'keeper' | 'non_striker';
+export type PlayerRole = 'bowler' | 'batter' | 'keeper' | 'non_striker' | 'umpire';
+export type ModelProfile = 'mixamo' | 'cricket' | 'static';
 
 export interface PlayerModelConfig {
   url: string;
+  profile: ModelProfile;
   scale: number;
   rotationY: number;
   yOffset: number;
   color?: string;
+  /** Skip recolouring mesh materials (textured cricket GLB). */
+  skipKitRecolor?: boolean;
+  /** Model already includes kit — only attach bat / minimal extras. */
+  minimalGear?: boolean;
+  /** Procedural cricket cap on head (team color). */
+  showCap?: boolean;
 }
 
-/** Mixamo Soldier from Three.js examples — rigged human with Idle/Walk/Run. */
-export const MODEL_PATHS = {
-  soldier: '/models/soldier.glb',
-  /** Drop Sketchfab "Indian Cricket Player - Rigged" (CC Attribution) here */
-  cricketPlayer: '/models/cricket-player-custom.glb',
-} as const;
+/** Paid Fab Store umpire (manual GLB import) — trish.j2109 */
+export const CRICKET_UMPIRE_STORE_UID = '85026f7cece84299bf4ddf90d3b0addc';
+export const CRICKET_UMPIRE_STORE_URL =
+  'https://sketchfab.com/3d-models/cricket-umpire-85026f7cece84299bf4ddf90d3b0addc';
 
-export const DEFAULT_PLAYER_MODEL = MODEL_PATHS.soldier;
+export const MODEL_PATHS = {
+  cricketPlayer: '/models/cricket-player.glb',
+  cricketBatsman: '/models/cricket-batsman.glb',
+  cricketKeeper: '/models/cricket-keeper.glb',
+  /** Same as cricketPlayer — Indian Cricket Player + procedural umpire coat/hat (free). */
+  cricketUmpire: '/models/cricket-player.glb',
+} as const;
 
 export const CLIPS = {
   idle: 'Idle',
@@ -27,17 +39,60 @@ export const CLIPS = {
 
 export type ClipKey = keyof typeof CLIPS;
 
+export const TEAM_KIT_RED = '#dc2626';
+
+const CRICKET_BASE: Omit<PlayerModelConfig, 'url' | 'color'> = {
+  profile: 'cricket',
+  scale: 1,
+  rotationY: 0,
+  yOffset: 0,
+  skipKitRecolor: false,
+  minimalGear: true,
+};
+
 const ROLE_CONFIG: Record<PlayerRole, PlayerModelConfig> = {
-  bowler: { url: DEFAULT_PLAYER_MODEL, scale: 1, rotationY: 0, yOffset: 0, color: '#dc2626' },
-  batter: { url: DEFAULT_PLAYER_MODEL, scale: 1, rotationY: 0, yOffset: 0, color: '#2563eb' },
-  keeper: { url: DEFAULT_PLAYER_MODEL, scale: 1, rotationY: 0, yOffset: 0, color: '#059669' },
-  non_striker: { url: DEFAULT_PLAYER_MODEL, scale: 1, rotationY: 0, yOffset: 0, color: '#2563eb' },
+  bowler: {
+    ...CRICKET_BASE,
+    url: MODEL_PATHS.cricketPlayer,
+    color: TEAM_KIT_RED,
+    showCap: true,
+  },
+  batter: {
+    ...CRICKET_BASE,
+    url: MODEL_PATHS.cricketPlayer,
+    color: TEAM_KIT_RED,
+  },
+  keeper: {
+    ...CRICKET_BASE,
+    url: MODEL_PATHS.cricketPlayer,
+    color: TEAM_KIT_RED,
+  },
+  non_striker: {
+    ...CRICKET_BASE,
+    url: MODEL_PATHS.cricketPlayer,
+    color: TEAM_KIT_RED,
+  },
+  umpire: {
+    ...CRICKET_BASE,
+    url: MODEL_PATHS.cricketPlayer,
+    color: '#1f2937',
+    skipKitRecolor: true,
+    minimalGear: false,
+  },
 };
 
 export function getPlayerModelConfig(role: PlayerRole, customUrl?: string): PlayerModelConfig {
   const base = ROLE_CONFIG[role];
   if (customUrl) return { ...base, url: customUrl };
   return base;
+}
+
+export function isCricketProfile(config: PlayerModelConfig): boolean {
+  return config.profile === 'cricket';
+}
+
+export function isStaticProfile(config: PlayerModelConfig): boolean {
+  return config.profile === 'static';
 }
 
 export const BONE_NAMES = {
@@ -73,23 +128,57 @@ export function resolveClipName(
   const names = Object.keys(actions).filter((n) => actions[n]);
   const exact = names.find((n) => n.toLowerCase() === wanted);
   if (exact) return exact;
-  return names.find((n) => n.toLowerCase().includes(wanted)) ?? null;
+  const partial = names.find((n) => n.toLowerCase().includes(wanted));
+  if (partial) return partial;
+
+  if (key === 'walk') {
+    const walkLike = names.find((n) => /walk|step|locomotion/i.test(n));
+    if (walkLike) return walkLike;
+    if (names.length === 1) return names[0] ?? null;
+  }
+
+  return null;
 }
 
+export function hasResolvedClip(
+  actions: Record<string, THREE.AnimationAction | null | undefined>,
+  key: ClipKey,
+): boolean {
+  return resolveClipName(actions, key) !== null;
+}
+
+/** First animation in a cricket GLB (usually idle / stance). */
+export function resolveFirstClip(
+  actions: Record<string, THREE.AnimationAction | null | undefined>,
+): string | null {
+  const names = Object.keys(actions).filter((n) => actions[n]);
+  return names[0] ?? null;
+}
+
+/** Material names that are clothing only — never skin, hair, face, or body. */
+const KIT_MATERIAL = /^Wolf3D_Outfit_(Top|Bottom|Footwear)$/i;
+
 export function applyCricketKitLook(root: THREE.Object3D, teamColor?: string) {
-  const kit = new THREE.Color(teamColor ?? '#f8f6ef');
+  const kit = new THREE.Color(teamColor ?? TEAM_KIT_RED);
   root.traverse((child) => {
     if (!(child instanceof THREE.Mesh)) return;
-    if (/visor|helmet|cap/i.test(child.name)) {
-      child.visible = false;
-      return;
-    }
+
     const mats = Array.isArray(child.material) ? child.material : [child.material];
-    mats.forEach((mat) => {
-      if (mat instanceof THREE.MeshStandardMaterial) {
-        mat.color.lerp(kit, 0.55);
-        mat.roughness = Math.min(mat.roughness, 0.72);
-      }
+    const nextMats = mats.map((mat) => {
+      if (!(mat instanceof THREE.MeshStandardMaterial)) return mat;
+      if (!KIT_MATERIAL.test(mat.name ?? '')) return mat;
+
+      const kitMat = mat.clone();
+      kitMat.name = mat.name;
+      kitMat.color.copy(kit);
+      kitMat.map = null;
+      kitMat.roughness = 0.65;
+      kitMat.needsUpdate = true;
+      return kitMat;
     });
+
+    if (nextMats.some((m, i) => m !== mats[i])) {
+      child.material = Array.isArray(child.material) ? nextMats : nextMats[0]!;
+    }
   });
 }

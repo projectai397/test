@@ -9,17 +9,22 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import {
-  BONE_NAMES,
   CLIPS,
   applyCricketKitLook,
-  findBone,
   getPlayerModelConfig,
+  isCricketProfile,
+  isStaticProfile,
+  hasResolvedClip,
   resolveClipName,
+  resolveFirstClip,
+  type ClipKey,
   type PlayerModelConfig,
   type PlayerRole,
+  type ModelProfile,
 } from '../../utils/playerModels';
 import { cloneAndNormalizeModel } from '../../utils/normalizeModel';
 import { attachCricketGear } from '../../utils/attachCricketGear';
+import { resolvePlayerBones } from '../../utils/resolvePlayerBones';
 import type { PlayerBones } from '../../utils/cricketProcedural';
 import { captureBoneRestPose, restoreBoneRestPose, type BoneRestMap } from '../../utils/boneRestPose';
 
@@ -31,6 +36,8 @@ export interface GlbPlayerModelHandle {
   getBatRef: () => THREE.Object3D | null;
   getParts: () => PlayerBones;
   getBoneRestPose: () => BoneRestMap;
+  getModelProfile: () => ModelProfile;
+  hasClip: (key: keyof typeof CLIPS) => boolean;
   playClip: (clipName: string, loop?: boolean, fade?: number, timeScale?: number) => void;
   stopClips: () => void;
   beginProcedural: () => BoneRestMap;
@@ -94,7 +101,9 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
 
     const playIdle = () => {
       if (proceduralActive.current) return;
-      const idleName = resolveClipName(actionsRef.current, 'idle');
+      const idleName = isCricketProfile(config)
+        ? resolveFirstClip(actionsRef.current)
+        : resolveClipName(actionsRef.current, 'idle');
       if (!idleName || !actionsRef.current[idleName]) return;
       const idle = actionsRef.current[idleName]!;
       idle.reset();
@@ -112,23 +121,28 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         if (obj instanceof THREE.Mesh) {
           obj.castShadow = true;
           obj.receiveShadow = true;
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          for (const mat of mats) {
+            if (mat instanceof THREE.MeshStandardMaterial && mat.map) {
+              mat.map.colorSpace = THREE.SRGBColorSpace;
+              mat.needsUpdate = true;
+            }
+          }
         }
       });
 
-      if (config.color) applyCricketKitLook(scene, config.color);
+      if (isStaticProfile(config)) {
+        restPoseRef.current = new Map();
+        readyRef.current = true;
+        console.debug(`[GlbPlayerModel] ready (${role}) static mesh`);
+        return;
+      }
 
+      if (!config.skipKitRecolor && config.color) applyCricketKitLook(scene, config.color);
+
+      const resolved = resolvePlayerBones(scene, config.profile);
       const b = bonesRef.current;
-      b.hips = findBone(scene, BONE_NAMES.hips);
-      b.torso = findBone(scene, BONE_NAMES.spine);
-      b.legL = findBone(scene, BONE_NAMES.leftUpLeg);
-      b.legR = findBone(scene, BONE_NAMES.rightUpLeg);
-      b.armL = findBone(scene, BONE_NAMES.leftArm);
-      b.armR = findBone(scene, BONE_NAMES.rightArm);
-      b.foreArmL = findBone(scene, 'LeftForeArm');
-      b.foreArmR = findBone(scene, 'RightForeArm');
-      b.head = findBone(scene, BONE_NAMES.head);
-      b.handL = findBone(scene, 'LeftHand');
-      b.handR = findBone(scene, BONE_NAMES.rightHand);
+      Object.assign(b, resolved);
 
       if (b.handR && !b.handR.children.some((c) => c.name === 'HandAnchor')) {
         handAnchorRef.current.name = 'HandAnchor';
@@ -142,7 +156,13 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         headAnchorRef.current.position.set(0, 0.08, 0);
       }
 
-      attachCricketGear(scene, role, b, config.color);
+      if (!isStaticProfile(config)) {
+        attachCricketGear(scene, role, b, config.color, {
+          minimalGear: config.minimalGear,
+          teamColor: config.color,
+          showCap: config.showCap,
+        });
+      }
 
       skinnedMeshesRef.current = [];
       scene.traverse((obj) => {
@@ -180,7 +200,7 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
           armR: b.armR?.name ?? null,
         });
       }
-    }, [scene, config.color, config.url, role, showBat]);
+    }, [scene, config.color, config.url, config.profile, config.skipKitRecolor, config.minimalGear, config.showCap, role, showBat]);
 
     useFrame((_, delta) => {
       if (proceduralActive.current) {
@@ -193,19 +213,25 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
     });
 
     useImperativeHandle(ref, () => ({
-      isReady: () => readyRef.current && !!bonesRef.current.torso,
+      isReady: () =>
+        isStaticProfile(config) ? readyRef.current : readyRef.current && !!bonesRef.current.torso,
       getHandRef: () => handAnchorRef.current,
       getHeadRef: () => headAnchorRef.current,
       getRootRef: () => groupRef.current,
       getBatRef: () => batObjectRef.current,
       getParts,
       getBoneRestPose: () => restPoseRef.current,
+      getModelProfile: () => config.profile,
+      hasClip: (key: ClipKey) => hasResolvedClip(actionsRef.current, key),
       playClip: (clipName, loop = true, fade = 0.25, timeScale?: number) => {
         if (proceduralActive.current) return;
         const key = (Object.keys(CLIPS) as Array<keyof typeof CLIPS>).find(
           (k) => CLIPS[k].toLowerCase() === clipName.toLowerCase() || k === clipName,
         );
-        const resolved = key ? resolveClipName(actionsRef.current, key) : clipName;
+        let resolved = key ? resolveClipName(actionsRef.current, key) : clipName;
+        if (!resolved && isCricketProfile(config) && key === 'idle') {
+          resolved = resolveFirstClip(actionsRef.current);
+        }
         const next = resolved ? actionsRef.current[resolved] : undefined;
         if (!next) return;
         next.reset();
@@ -224,6 +250,7 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         currentAction.current = null;
       },
       beginProcedural: () => {
+        if (isStaticProfile(config)) return restPoseRef.current;
         proceduralActive.current = true;
         mixer?.stopAllAction();
         currentAction.current = null;
@@ -255,4 +282,6 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
   },
 );
 
-useGLTF.preload('/models/soldier.glb');
+useGLTF.preload('/models/cricket-player.glb');
+useGLTF.preload('/models/cricket-batsman.glb');
+useGLTF.preload('/models/cricket-keeper.glb');

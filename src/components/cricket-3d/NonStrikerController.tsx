@@ -49,7 +49,7 @@ export const NonStrikerController = forwardRef<
 
   return (
     <group ref={groupRef}>
-      <PlayerModel ref={playerRef} role="non_striker" jerseyColor="#2563eb" label={name} modelUrl={modelUrl} />
+      <PlayerModel ref={playerRef} role="non_striker" jerseyColor="#dc2626" label={name} modelUrl={modelUrl} />
     </group>
   );
 });
