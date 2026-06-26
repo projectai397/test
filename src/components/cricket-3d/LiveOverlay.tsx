@@ -3,6 +3,7 @@ import { formatDeliveryType } from '../../utils/mapDeliveryToAnimation';
 import { ResultEffect } from './ResultEffect';
 import { ReplayButton } from './ReplayButton';
 import { CameraAnglePicker } from './CameraAnglePicker';
+import { AccessibilityCameraToolbar } from './AccessibilityCameraToolbar';
 
 interface LiveOverlayProps {
   connectionStatus: ConnectionStatus;
@@ -61,6 +62,10 @@ export function LiveOverlay({
 
       <div className="live-overlay__bottom-left">
         <CameraAnglePicker />
+      </div>
+
+      <div className="live-overlay__bottom-right">
+        <AccessibilityCameraToolbar />
       </div>
 
       {showWaitingText && !resultDisplay && (

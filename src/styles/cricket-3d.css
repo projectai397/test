@@ -254,6 +254,110 @@ body,
   color: rgba(255, 255, 255, 0.45);
 }
 
+/* Accessibility camera toolbar — bottom right */
+.live-overlay__bottom-right {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  pointer-events: auto;
+}
+
+.a11y-camera {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  user-select: none;
+}
+
+.a11y-camera__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+  text-align: center;
+}
+
+.a11y-camera__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 44px);
+  grid-template-rows: repeat(3, 44px);
+  gap: 4px;
+  justify-content: center;
+}
+
+.a11y-camera__spacer {
+  width: 44px;
+  height: 44px;
+}
+
+.a11y-camera__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.a11y-camera__btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.a11y-camera__btn:focus-visible {
+  outline: 2px solid #4ade80;
+  outline-offset: 2px;
+}
+
+.a11y-camera__btn:active {
+  transform: scale(0.94);
+}
+
+.a11y-camera__btn--reset {
+  font-size: 20px;
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+.a11y-camera__btn--reset:hover {
+  background: rgba(74, 222, 128, 0.22);
+}
+
+.a11y-camera__zoom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.a11y-camera__zoom-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  min-width: 36px;
+  text-align: center;
+}
+
+.a11y-camera__btn--zoom {
+  font-size: 22px;
+}
+
 .scene-loader {
   padding: 10px 18px;
   border-radius: 8px;
