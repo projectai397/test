@@ -148,6 +148,6 @@ export function timelineToPromise(tl: gsap.core.Timeline): Promise<void> {
   });
 }
 
-export const MIN_RUN_UP_MS = 1800;
+export const MIN_RUN_UP_MS = 800;
 export const MIN_BOWL_MS = 700;
 export const MIN_BAT_MS = 500;

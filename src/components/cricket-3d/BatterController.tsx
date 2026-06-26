@@ -79,7 +79,14 @@ export const BatterController = forwardRef<BatterControllerHandle, BatterControl
         const rest = player.beginProcedural();
         const batRest = bat.rotation.clone();
 
-        const stepPromise = animatePosition(group, { x: 0.35 }, 0.22, { ease: 'power2Out' });
+        const stepDistance = 0.35;
+        const stepDuration = 0.22;
+        const stepPromise = animatePosition(
+          group,
+          { x: group.position.x + stepDistance },
+          stepDuration,
+          { ease: 'linear' },
+        );
         const tl = buildSixShotTimeline(player.getParts(), rest, bat, batRest);
         timelineRef.current = tl;
 

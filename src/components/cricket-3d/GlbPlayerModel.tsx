@@ -31,7 +31,7 @@ export interface GlbPlayerModelHandle {
   getBatRef: () => THREE.Object3D | null;
   getParts: () => PlayerBones;
   getBoneRestPose: () => BoneRestMap;
-  playClip: (clipName: string, loop?: boolean, fade?: number) => void;
+  playClip: (clipName: string, loop?: boolean, fade?: number, timeScale?: number) => void;
   stopClips: () => void;
   beginProcedural: () => BoneRestMap;
   endProcedural: () => void;
@@ -200,7 +200,7 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
       getBatRef: () => batObjectRef.current,
       getParts,
       getBoneRestPose: () => restPoseRef.current,
-      playClip: (clipName, loop = true, fade = 0.25) => {
+      playClip: (clipName, loop = true, fade = 0.25, timeScale?: number) => {
         if (proceduralActive.current) return;
         const key = (Object.keys(CLIPS) as Array<keyof typeof CLIPS>).find(
           (k) => CLIPS[k].toLowerCase() === clipName.toLowerCase() || k === clipName,
@@ -211,8 +211,8 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         next.reset();
         next.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
         next.clampWhenFinished = !loop;
-        const speed = key === 'run' ? 1.75 : key === 'walk' ? 1.2 : 1;
-        next.setEffectiveTimeScale(speed);
+        const defaultSpeed = key === 'run' ? 1 : key === 'walk' ? 1 : 1;
+        next.setEffectiveTimeScale(timeScale ?? defaultSpeed);
         if (currentAction.current && currentAction.current !== next) {
           currentAction.current.fadeOut(fade);
         }

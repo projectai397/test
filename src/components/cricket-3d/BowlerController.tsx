@@ -8,8 +8,9 @@ import {
   MIN_RUN_UP_MS,
   timelineToPromise,
 } from '../../utils/cricketProcedural';
-import { scenePositions, animationTimings } from '../../utils/animationTimings';
+import { scenePositions } from '../../utils/animationTimings';
 import { PITCH_FACING } from '../../utils/playerFacing';
+import { getBowlerRunUpDistance, syncRunLocomotion } from '../../utils/locomotionSync';
 import { animatePosition, cancelMotionsFor, waitUntilReady } from '../../utils/motionRunner';
 
 export interface AnimationCompletion {
@@ -68,14 +69,16 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
         cancelMotionsFor(group);
         player.endProcedural();
         setBowlerHome(group);
-        player.playClip(CLIPS.run, true, 0.15);
+        const runSync = syncRunLocomotion(getBowlerRunUpDistance());
+        player.playClip(CLIPS.run, true, 0.15, runSync.clipTimeScale);
 
         await animatePosition(
           group,
           { x: scenePositions.bowlerCreaseX, z: scenePositions.bowlerStartZ, y: 0 },
-          animationTimings.runUp,
-          { ease: 'power1Out', yBob: { amplitude: 0.12, period: 0.18 } },
+          runSync.duration,
+          { ease: 'linear', yBob: runSync.yBob },
         );
+        player.stopClips();
 
         const durationMs = performance.now() - start;
         return { ok: durationMs >= MIN_RUN_UP_MS, durationMs };
