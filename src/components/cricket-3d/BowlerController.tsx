@@ -41,6 +41,7 @@ export interface BowlerControllerHandle {
 interface BowlerControllerProps {
   name?: string;
   jerseyColor: string;
+  trouserColor?: string;
   showCap?: boolean;
   modelUrl?: string;
 }
@@ -51,7 +52,7 @@ function setBowlerHome(group: THREE.Group) {
 }
 
 export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControllerProps>(
-  function BowlerController({ name = 'B Stokes', jerseyColor, showCap, modelUrl }, ref) {
+  function BowlerController({ name = 'B Stokes', jerseyColor, trouserColor, showCap, modelUrl }, ref) {
     const playerRef = useRef<PlayerModelHandle>(null);
     const groupRef = useRef<THREE.Group>(null);
     const timelineRef = useRef<UnifiedBowlerTimeline['timeline'] | null>(null);
@@ -230,6 +231,7 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
           ref={playerRef}
           role="bowler"
           jerseyColor={jerseyColor}
+          trouserColor={trouserColor}
           showCap={showCap}
           label={name}
           modelUrl={modelUrl}

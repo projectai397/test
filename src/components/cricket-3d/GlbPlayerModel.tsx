@@ -12,7 +12,6 @@ import * as THREE from 'three';
 import {
   CLIPS,
   applyCricketKitLook,
-  applyMeshyKitLook,
   applyUmpireKitLook,
   getPlayerModelConfig,
   getClipDuration,
@@ -21,6 +20,8 @@ import {
   isMixamoProfile,
   isStaticProfile,
   hasResolvedClip,
+  applyMeshyKitLook,
+  TEAM_KIT_RED,
   resolveClipName,
   resolveFirstClip,
   type ClipKey,
@@ -31,6 +32,7 @@ import {
 import { cloneAndNormalizeModel } from '../../utils/normalizeModel';
 import { attachCricketGear } from '../../utils/attachCricketGear';
 import { resolvePlayerBones } from '../../utils/resolvePlayerBones';
+import { trouserColorFromKit } from '../../utils/kitColors';
 import type { PlayerBones } from '../../utils/cricketProcedural';
 import { captureBoneRestPose, restoreBoneRestPose, type BoneRestMap } from '../../utils/boneRestPose';
 
@@ -169,8 +171,9 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
       if (!config.skipKitRecolor) {
         if (role === 'umpire') applyUmpireKitLook(scene);
         else if (config.color) applyCricketKitLook(scene, config.color);
-      } else if (isMeshyBowlerUrl(config.url) && config.color) {
-        applyMeshyKitLook(scene, config.color);
+      } else if (isMeshyBowlerUrl(config.url)) {
+        const kit = config.color ?? TEAM_KIT_RED;
+        applyMeshyKitLook(scene, kit, config.trouserColor ?? trouserColorFromKit(kit));
       }
 
       const resolved = resolvePlayerBones(scene, config.profile);
@@ -197,7 +200,9 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         attachCricketGear(scene, role, b, config.color, {
           minimalGear: config.minimalGear,
           teamColor: config.color,
+          trouserColor: config.trouserColor ?? (config.color ? trouserColorFromKit(config.color) : undefined),
           showCap: config.showCap,
+          meshyCharacter: isMeshyBowlerUrl(config.url),
         });
       }
 
@@ -238,7 +243,7 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
           armR: b.armR?.name ?? null,
         });
       }
-    }, [scene, config.color, config.url, config.profile, config.skipKitRecolor, config.minimalGear, config.showCap, role, showBat]);
+    }, [scene, config.color, config.trouserColor, config.url, config.profile, config.skipKitRecolor, config.minimalGear, config.showCap, role, showBat]);
 
     useFrame((_, delta) => {
       if (proceduralActive.current) {

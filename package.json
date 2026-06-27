@@ -11,6 +11,9 @@
     "install:models": "node scripts/install-cricket-models.mjs",
     "generate:bowling": "node scripts/generate-bowling-motion.mjs",
     "inspect:fbx": "node scripts/inspect-fbx.mjs",
+    "meshy:balance": "node scripts/meshy-api.mjs balance",
+    "meshy:search": "node scripts/meshy-api.mjs search",
+    "meshy:build-bowler": "node scripts/meshy-api.mjs build-bowler",
     "install:umpire": "node scripts/install-umpire.mjs",
     "validate:models": "node scripts/validate-models.mjs"
   },

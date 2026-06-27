@@ -24,6 +24,7 @@ import { buildDefaultBallEvent } from '../../utils/defaultBallEvent';
 import { scenePositions, cameraDefaults } from '../../utils/animationTimings';
 import { MODEL_PATHS } from '../../utils/playerModels';
 import { resolveFieldPosition } from '../../utils/fieldPositions';
+import { resolveKitColor, resolveTrouserColor } from '../../utils/kitColors';
 import { auditExpectedModels, getModelInstallMessage, logModelAudit } from '../../utils/modelAudit';
 import { loadMatchConfig } from '../../config/loadMatchConfig';
 import type { CricketBallEvent } from '../../types/cricket-ball-event';
@@ -78,6 +79,14 @@ function CricketScene({
   const teamB = matchConfig.teams.teamB;
   const umpire = matchConfig.umpire;
 
+  const bowlerKit = resolveKitColor(teamA.kitColor, teamA.bowler.kitColor);
+  const bowlerTrousers = resolveTrouserColor(teamA.kitColor, teamA.trouserColor, teamA.bowler.kitColor);
+  const batterKit = resolveKitColor(teamB.kitColor, teamB.batsman.kitColor);
+  const batterTrousers = resolveTrouserColor(teamB.kitColor, teamB.trouserColor, teamB.batsman.kitColor);
+  const nonStrikerKit = resolveKitColor(teamB.kitColor, teamB.nonStriker.kitColor);
+  const nonStrikerTrousers = resolveTrouserColor(teamB.kitColor, teamB.trouserColor, teamB.nonStriker.kitColor);
+  const teamATrousers = resolveTrouserColor(teamA.kitColor, teamA.trouserColor);
+
   return (
     <>
       <color attach="background" args={['#87a8c4']} />
@@ -110,26 +119,30 @@ function CricketScene({
       <BowlerController
         ref={bowlerRef}
         name={teamA.bowler.name}
-        jerseyColor={teamA.bowler.kitColor ?? teamA.kitColor}
+        jerseyColor={bowlerKit}
+        trouserColor={bowlerTrousers}
         showCap={teamA.bowler.showCap}
         modelUrl={teamA.bowler.modelUrl ?? modelUrl}
       />
       <BatterController
         ref={batterRef}
         name={teamB.batsman.name}
-        jerseyColor={teamB.kitColor}
+        jerseyColor={batterKit}
+        trouserColor={batterTrousers}
         modelUrl={modelUrl}
       />
       <KeeperController
         ref={keeperRef}
         name={teamA.keeper.name}
         jerseyColor={teamA.kitColor}
+        trouserColor={teamATrousers}
         modelUrl={modelUrl}
       />
       <NonStrikerController
         ref={nonStrikerRef}
         name={teamB.nonStriker.name}
-        jerseyColor={teamB.kitColor}
+        jerseyColor={nonStrikerKit}
+        trouserColor={nonStrikerTrousers}
         modelUrl={modelUrl}
       />
 
@@ -143,6 +156,7 @@ function CricketScene({
             }}
             name={fielder.name}
             jerseyColor={teamA.kitColor}
+            trouserColor={teamATrousers}
             x={pos.x}
             z={pos.z}
             facingY={pos.facingY}

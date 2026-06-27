@@ -10,6 +10,8 @@ export interface PlayerModelConfig {
   rotationY: number;
   yOffset: number;
   color?: string;
+  /** Trousers / pads tint — defaults to darker shade of color. */
+  trouserColor?: string;
   /** Skip recolouring mesh materials (textured cricket GLB). */
   skipKitRecolor?: boolean;
   /** Model already includes kit — only attach bat / minimal extras. */
@@ -203,33 +205,35 @@ export function resolveFirstClip(
 /** Material names that are clothing only — never skin, hair, face, or body. */
 const KIT_MATERIAL = /^Wolf3D_Outfit_(Top|Bottom|Footwear)$/i;
 
-/** Tint Meshy kit onto albedo — keeps texture so dark hair stays black (map × color). */
-export function applyMeshyKitLook(root: THREE.Object3D, teamColor?: string) {
-  const kit = new THREE.Color(teamColor ?? TEAM_KIT_RED);
+/** Keep Meshy photoreal albedo — do not strip emissive (model needs it to render). */
+export function prepareMeshyCharacterMaterials(root: THREE.Object3D): void {
   root.traverse((child) => {
-    if (!(child instanceof THREE.Mesh)) return;
+    if (!(child instanceof THREE.SkinnedMesh)) return;
     const mats = Array.isArray(child.material) ? child.material : [child.material];
     const nextMats = mats.map((mat) => {
       if (!(mat instanceof THREE.MeshStandardMaterial)) return mat;
-      const kitMat = mat.clone();
-      kitMat.name = mat.name;
-      kitMat.color.copy(kit);
-      if (mat.map) {
-        kitMat.map = mat.map;
-        kitMat.map.colorSpace = THREE.SRGBColorSpace;
-      }
-      kitMat.emissive.set(0, 0, 0);
-      kitMat.emissiveIntensity = 0;
-      kitMat.emissiveMap = null;
-      kitMat.roughness = mat.roughness ?? 0.55;
-      kitMat.metalness = mat.metalness ?? 0.05;
-      kitMat.needsUpdate = true;
-      return kitMat;
+      const m = mat.clone();
+      m.color.set('#ffffff');
+      if (m.map) m.map.colorSpace = THREE.SRGBColorSpace;
+      if (m.emissiveMap) m.emissiveMap.colorSpace = THREE.SRGBColorSpace;
+      if (m.normalMap) m.normalMap.colorSpace = THREE.NoColorSpace;
+      m.emissiveIntensity = Math.min(m.emissiveIntensity || 1, 0.55);
+      m.needsUpdate = true;
+      return m;
     });
     if (nextMats.some((m, i) => m !== mats[i])) {
       child.material = Array.isArray(child.material) ? nextMats : nextMats[0]!;
     }
   });
+}
+
+/** Prep Meshy materials; kit colour is applied via bone-attached shells in attachCricketGear. */
+export function applyMeshyKitLook(
+  root: THREE.Object3D,
+  _teamColor?: string,
+  _trouserColor?: string,
+) {
+  prepareMeshyCharacterMaterials(root);
 }
 
 export function applyCricketKitLook(root: THREE.Object3D, teamColor?: string) {

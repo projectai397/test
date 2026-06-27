@@ -20,6 +20,8 @@ export interface FielderConfig {
 export interface TeamAConfig {
   name: string;
   kitColor: string;
+  /** Optional trouser colour — defaults to a darker shade of kitColor. */
+  trouserColor?: string;
   bowler: {
     name: string;
     showCap?: boolean;
@@ -35,8 +37,9 @@ export interface TeamAConfig {
 export interface TeamBConfig {
   name: string;
   kitColor: string;
-  batsman: { name: string };
-  nonStriker: { name: string };
+  trouserColor?: string;
+  batsman: { name: string; kitColor?: string };
+  nonStriker: { name: string; kitColor?: string };
 }
 
 export interface UmpireConfig {
@@ -138,6 +141,9 @@ export function validateMatchConfig(raw: unknown): MatchConfig {
       teamA: {
         name: requireString(teamA, 'name', 'teams.teamA'),
         kitColor: requireHexColor(teamA, 'kitColor', 'teams.teamA'),
+        ...(typeof teamA.trouserColor === 'string' && HEX_COLOR.test(teamA.trouserColor)
+          ? { trouserColor: teamA.trouserColor }
+          : {}),
         bowler: {
           name: requireString(teamA.bowler, 'name', 'teams.teamA.bowler'),
           showCap: teamA.bowler.showCap === true,
@@ -156,11 +162,20 @@ export function validateMatchConfig(raw: unknown): MatchConfig {
       teamB: {
         name: requireString(teamB, 'name', 'teams.teamB'),
         kitColor: requireHexColor(teamB, 'kitColor', 'teams.teamB'),
+        ...(typeof teamB.trouserColor === 'string' && HEX_COLOR.test(teamB.trouserColor)
+          ? { trouserColor: teamB.trouserColor }
+          : {}),
         batsman: {
           name: requireString(teamB.batsman, 'name', 'teams.teamB.batsman'),
+          ...(typeof teamB.batsman.kitColor === 'string' && HEX_COLOR.test(teamB.batsman.kitColor)
+            ? { kitColor: teamB.batsman.kitColor }
+            : {}),
         },
         nonStriker: {
           name: requireString(teamB.nonStriker, 'name', 'teams.teamB.nonStriker'),
+          ...(typeof teamB.nonStriker.kitColor === 'string' && HEX_COLOR.test(teamB.nonStriker.kitColor)
+            ? { kitColor: teamB.nonStriker.kitColor }
+            : {}),
         },
       },
     },

@@ -3,11 +3,11 @@
     "teamA": {
       "name": "Team A",
       "kitColor": "#dc2626",
+      "trouserColor": "#1a1a1a",
       "bowler": {
         "name": "B Stokes",
         "showCap": true,
-        "modelUrl": "/models/meshy-bowler.glb",
-        "kitColor": "#2563eb"
+        "modelUrl": "/models/meshy-bowler.glb"
       },
       "keeper": {
         "name": "J Smith"

@@ -5,16 +5,13 @@ import {
   type TeamId,
 } from '../types/match-config';
 
-let cached: MatchConfig | null = null;
-
+/** Re-read config.json each call so kit colours update on Vite HMR. */
 export function loadMatchConfig(): MatchConfig {
-  if (cached) return cached;
   try {
-    cached = validateMatchConfig(rawConfig);
-    return cached;
+    return validateMatchConfig(rawConfig);
   } catch (err) {
     console.error('[MatchConfig] Invalid config.json — using built-in defaults', err);
-    cached = validateMatchConfig({
+    return validateMatchConfig({
       teams: {
         teamA: {
           name: 'Team A',
@@ -46,7 +43,6 @@ export function loadMatchConfig(): MatchConfig {
         showCap: true,
       },
     });
-    return cached;
   }
 }
 

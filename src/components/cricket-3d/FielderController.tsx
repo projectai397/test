@@ -11,6 +11,7 @@ export interface FielderControllerHandle {
 interface FielderControllerProps {
   name: string;
   jerseyColor: string;
+  trouserColor?: string;
   x: number;
   z: number;
   facingY: number;
@@ -18,7 +19,7 @@ interface FielderControllerProps {
 }
 
 export const FielderController = forwardRef<FielderControllerHandle, FielderControllerProps>(
-  function FielderController({ name, jerseyColor, x, z, facingY, modelUrl }, ref) {
+  function FielderController({ name, jerseyColor, trouserColor, x, z, facingY, modelUrl }, ref) {
     const playerRef = useRef<PlayerModelHandle>(null);
     const groupRef = useRef<THREE.Group>(null);
     const timelineRef = useRef<ReturnType<typeof buildWatchBallTimeline> | null>(null);
@@ -54,6 +55,7 @@ export const FielderController = forwardRef<FielderControllerHandle, FielderCont
           ref={playerRef}
           role="fielder"
           jerseyColor={jerseyColor}
+          trouserColor={trouserColor}
           label={name}
           modelUrl={modelUrl}
         />

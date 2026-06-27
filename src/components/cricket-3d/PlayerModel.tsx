@@ -8,6 +8,7 @@ export type { PlayerRole };
 interface PlayerModelProps {
   role: PlayerRole;
   jerseyColor?: string;
+  trouserColor?: string;
   showCap?: boolean;
   showBat?: boolean;
   showPads?: boolean;
@@ -18,11 +19,12 @@ interface PlayerModelProps {
 
 /** Rigged cricket player GLB per role (see `npm run install:models`). */
 export const PlayerModel = forwardRef<PlayerModelHandle, PlayerModelProps>(
-  function PlayerModel({ role, jerseyColor, showCap, showBat, label, modelUrl }, ref) {
+  function PlayerModel({ role, jerseyColor, trouserColor, showCap, showBat, label, modelUrl }, ref) {
     const base = getPlayerModelConfig(role, modelUrl);
     const config = {
       ...base,
       ...(jerseyColor ? { color: jerseyColor } : {}),
+      ...(trouserColor ? { trouserColor } : {}),
       ...(showCap !== undefined ? { showCap } : {}),
     };
 
