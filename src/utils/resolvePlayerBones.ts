@@ -25,6 +25,11 @@ export function resolvePlayerBones(scene: THREE.Object3D, profile: ModelProfile)
     return cricket.torso || cricket.armR ? cricket : auto;
   }
 
+  if (profile === 'mixamo') {
+    const auto = resolveAutoBones(scene);
+    if (isBoneSetComplete(auto)) return auto;
+  }
+
   return {
     hips: findBone(scene, BONE_NAMES.hips),
     torso: findBone(scene, BONE_NAMES.spine),

@@ -134,10 +134,12 @@ export function applyCricketRunUpPose(bones: PlayerBones, rest: BoneRestMap): vo
 }
 
 /** Seconds into buildBowlingTimeline when the ball leaves the hand (132 km/h baseline). */
-export const BOWLING_RELEASE_TIME = 0.48;
+export const BOWLING_RELEASE_TIME = 0.52;
 
 export interface BowlingTimelineOptions {
   deliverySpeedKmh?: number;
+  /** Run-up already ended in gather pose — skip first delivery phase. */
+  skipGather?: boolean;
 }
 
 function bowlingPaceScale(speedKmh: number): number {
@@ -145,7 +147,15 @@ function bowlingPaceScale(speedKmh: number): number {
   return 132 / clamped;
 }
 
-/** Side-on cricket jog — locked upper body, thigh + shin strides. */
+/** Partial chest turn at release — stay mostly side-on, not a full 90° snap. */
+function bowlerReleaseFacing(): number {
+  return (
+    PITCH_FACING.bowlerRunUpSideOn +
+    (PITCH_FACING.bowlerDeliveryFrontOn - PITCH_FACING.bowlerRunUpSideOn) * 0.55
+  );
+}
+
+/** Side-on cricket jog — locked upper body, thigh + shin strides. Ends in gather pose. */
 export function buildCricketRunUpTimeline(
   bones: PlayerBones,
   rest: BoneRestMap,
@@ -153,10 +163,11 @@ export function buildCricketRunUpTimeline(
 ): gsap.core.Timeline {
   const tl = gsap.timeline();
 
-  tweenPose(tl, bones, rest, CRICKET_RUNUP_HOLD, Math.min(duration * 0.12, 0.22), 0, 'power1.out');
+  tweenPose(tl, bones, rest, CRICKET_RUNUP_HOLD, Math.min(duration * 0.1, 0.18), 0, 'power1.out');
 
-  const strideStart = Math.min(duration * 0.12, 0.22);
-  const strideWindow = duration - strideStart - 0.1;
+  const strideStart = Math.min(duration * 0.1, 0.18);
+  const blendOut = 0.22;
+  const strideWindow = duration - strideStart - blendOut;
   const strideCount = CRICKET_RUNUP_STRIDES.length;
   const strideDur = strideWindow / strideCount;
 
@@ -166,13 +177,24 @@ export function buildCricketRunUpTimeline(
     rotRel(tl, bones.lowerLegR, rest, stride.lowerLegR, strideDur, t, 'sine.inOut');
     rotRel(tl, bones.legL, rest, stride.legL, strideDur, t, 'sine.inOut');
     rotRel(tl, bones.lowerLegL, rest, stride.lowerLegL, strideDur, t, 'sine.inOut');
-    tweenPose(tl, bones, rest, CRICKET_RUNUP_HOLD, strideDur * 0.4, t, 'power1.out');
+    tweenPose(tl, bones, rest, CRICKET_RUNUP_HOLD, strideDur * 0.35, t, 'power1.out');
   });
+
+  /** Blend into delivery gather so run-up → bowl is seamless on the same character. */
+  tweenPose(
+    tl,
+    bones,
+    rest,
+    BOWLING_PHASES.gather,
+    blendOut,
+    duration - blendOut,
+    'power2.inOut',
+  );
 
   return tl;
 }
 
-/** Wolf3D fast-medium delivery: gather → bound → plant → OTM release → follow-through. */
+/** Wolf3D fast-medium delivery: bound → plant → OTM release → follow-through. */
 export function buildBowlingTimeline(
   bones: PlayerBones,
   rest: BoneRestMap,
@@ -183,34 +205,113 @@ export function buildBowlingTimeline(
   const speed = options?.deliverySpeedKmh ?? 132;
   const scale = bowlingPaceScale(speed);
   const d = (t: number) => t * scale;
+  const skipGather = options?.skipGather ?? false;
 
   const tl = gsap.timeline();
   const p = BOWLING_PHASES;
+  let t0 = 0;
 
-  tweenPose(tl, bones, rest, p.gather, d(0.12), 0, 'power2.out');
-  tweenPose(tl, bones, rest, p.bound, d(0.14), d(0.12), 'power2.out', true);
-  tweenPose(tl, bones, rest, p.plant, d(0.14), d(0.26), 'power3.in', true);
-  tweenPose(tl, bones, rest, p.release, d(0.12), d(0.4), 'power4.in', true);
-  tl.call(() => onRelease?.(), undefined, d(BOWLING_RELEASE_TIME));
-  tweenPose(tl, bones, rest, p.followThrough, d(0.38), d(0.52), 'power2.out', true);
+  if (!skipGather) {
+    tweenPose(tl, bones, rest, p.gather, d(0.12), t0, 'power2.out');
+    t0 += d(0.12);
+  }
+
+  tweenPose(tl, bones, rest, p.bound, d(0.09), t0, 'power2.out', true);
+  tweenPose(tl, bones, rest, p.plant, d(0.14), t0 + d(0.09), 'power3.in', true);
+  tweenPose(tl, bones, rest, p.release, d(0.12), t0 + d(0.23), 'power4.in', true);
+  const releaseAt = skipGather ? t0 + d(0.3) : t0 + d(BOWLING_RELEASE_TIME);
+  tl.call(() => onRelease?.(), undefined, releaseAt);
+  tweenPose(tl, bones, rest, p.followThrough, d(0.38), t0 + d(0.35), 'power2.out', true);
+
+  const jumpStart = t0;
+  tl.to(group.position, { y: 0.18, duration: d(0.06), ease: 'power2.out' }, jumpStart);
+  tl.to(group.position, { y: 0, duration: d(0.09), ease: 'power2.in' }, jumpStart + d(0.06));
 
   tl.to(
     group.position,
-    { x: scenePositions.bowlerCreaseX - 2.5, duration: d(0.65), ease: 'power1.out' },
-    d(0.25),
+    { x: scenePositions.bowlerCreaseX - 1.6, duration: d(0.48), ease: 'power1.out' },
+    t0 + d(0.1),
   );
 
   tl.to(
     group.rotation,
-    {
-      y: PITCH_FACING.bowlerDeliveryFrontOn,
-      duration: d(0.22),
-      ease: 'power2.inOut',
-    },
-    d(0.26),
+    { y: bowlerReleaseFacing(), duration: d(0.16), ease: 'power2.inOut' },
+    t0 + d(0.18),
+  );
+
+  tl.to(
+    group.rotation,
+    { y: PITCH_FACING.bowlerRunUpSideOn, duration: d(0.22), ease: 'power2.inOut' },
+    t0 + d(0.58),
   );
 
   return tl;
+}
+
+export interface UnifiedBowlerTimeline {
+  timeline: gsap.core.Timeline;
+  runUpEndTime: number;
+}
+
+/** One GSAP clock: run-up travel + strides + delivery on the same GLB character. */
+export function buildUnifiedBowlerTimeline(
+  bones: PlayerBones,
+  bindRest: BoneRestMap,
+  group: THREE.Object3D,
+  runUpDuration: number,
+  onRelease?: () => void,
+  options?: BowlingTimelineOptions,
+): UnifiedBowlerTimeline {
+  const tl = gsap.timeline();
+  const startX = scenePositions.bowlerStartX;
+  const creaseX = scenePositions.bowlerCreaseX;
+
+  group.position.set(startX, 0, scenePositions.bowlerStartZ);
+  group.rotation.set(0, PITCH_FACING.bowlerRunUpSideOn, 0);
+
+  tl.to(
+    group.position,
+    { x: creaseX, z: 0, y: 0, duration: runUpDuration, ease: 'power2.in' },
+    0,
+  );
+
+  const runUpBones = buildCricketRunUpTimeline(bones, bindRest, runUpDuration);
+  tl.add(runUpBones, 0);
+
+  tl.addLabel('runUpEnd', runUpDuration);
+
+  const delivery = buildBowlingTimeline(bones, bindRest, group, onRelease, {
+    ...options,
+    skipGather: true,
+  });
+  tl.add(delivery, runUpDuration);
+
+  return { timeline: tl, runUpEndTime: runUpDuration };
+}
+
+/** Play a GSAP timeline until `time` (seconds), then pause. */
+export function timelineUntil(tl: gsap.core.Timeline, time: number): Promise<void> {
+  return new Promise((resolve) => {
+    const start = tl.time();
+    if (start >= time) {
+      resolve();
+      return;
+    }
+    const proxy = { t: start };
+    gsap.to(proxy, {
+      t: time,
+      duration: time - start,
+      ease: 'none',
+      onUpdate: () => {
+        tl.time(proxy.t);
+      },
+      onComplete: () => {
+        tl.pause();
+        resolve();
+      },
+    });
+    if (tl.paused()) tl.play();
+  });
 }
 
 /** @deprecated Use buildCricketRunUpTimeline */

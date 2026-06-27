@@ -8,7 +8,7 @@ import { scenePositions } from './animationTimings';
  * Calibrated so legs look natural at 1.0× — ground speed is derived from this, not forced separately.
  */
 export const CLIP_LOCOMOTION = {
-  run: { cycleDuration: 0.7, effectiveStride: 5.2 },
+  run: { cycleDuration: 0.633, effectiveStride: 5.0 },
   walk: { cycleDuration: 1.033, effectiveStride: 1.15 },
   /** Cricketer Walk (IDEAZZZZ) — 2-step scanned walk, sped up for bowler run-up. */
   cricketWalkRunUp: { cycleDuration: 1.0, effectiveStride: 1.35, clipTimeScale: 1.45 },

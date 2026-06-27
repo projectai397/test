@@ -9,6 +9,8 @@
     "dev:server": "tsx server/mock-ws-server.ts",
     "build": "tsc && vite build",
     "install:models": "node scripts/install-cricket-models.mjs",
+    "generate:bowling": "node scripts/generate-bowling-motion.mjs",
+    "inspect:fbx": "node scripts/inspect-fbx.mjs",
     "install:umpire": "node scripts/install-umpire.mjs",
     "validate:models": "node scripts/validate-models.mjs"
   },

@@ -1,7 +1,7 @@
 export const animationTimings = {
   idleDelay: 0.5,
   runUp: 2.8,
-  bowlingAction: 1.0,
+  bowlingAction: 1.15,
   ballFlight: 1.2,
   batterShot: 0.9,
   resultSix: 2.8,

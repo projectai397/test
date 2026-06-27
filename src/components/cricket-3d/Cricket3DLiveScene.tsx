@@ -110,9 +110,9 @@ function CricketScene({
       <BowlerController
         ref={bowlerRef}
         name={teamA.bowler.name}
-        jerseyColor={teamA.kitColor}
+        jerseyColor={teamA.bowler.kitColor ?? teamA.kitColor}
         showCap={teamA.bowler.showCap}
-        modelUrl={modelUrl}
+        modelUrl={teamA.bowler.modelUrl ?? modelUrl}
       />
       <BatterController
         ref={batterRef}

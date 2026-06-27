@@ -3,12 +3,13 @@ import * as THREE from 'three';
 import { PlayerModel, type PlayerModelHandle } from './PlayerModel';
 import { CLIPS } from '../../utils/playerModels';
 import {
-  applyCricketRunUpPose,
   buildBowlingTimeline,
-  buildCricketRunUpTimeline,
+  buildUnifiedBowlerTimeline,
+  type UnifiedBowlerTimeline,
   MIN_BOWL_MS,
   MIN_RUN_UP_MS,
   timelineToPromise,
+  timelineUntil,
 } from '../../utils/cricketProcedural';
 import { scenePositions, animationTimings } from '../../utils/animationTimings';
 import { PITCH_FACING } from '../../utils/playerFacing';
@@ -53,9 +54,10 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
   function BowlerController({ name = 'B Stokes', jerseyColor, showCap, modelUrl }, ref) {
     const playerRef = useRef<PlayerModelHandle>(null);
     const groupRef = useRef<THREE.Group>(null);
-    const timelineRef = useRef<ReturnType<typeof buildBowlingTimeline> | null>(null);
-    /** Rest pose captured at run-up start — kept for seamless delivery handoff. */
-    const runUpRestRef = useRef<BoneRestMap | null>(null);
+    const timelineRef = useRef<UnifiedBowlerTimeline['timeline'] | null>(null);
+    const runUpEndTimeRef = useRef(0);
+    const bindRestRef = useRef<BoneRestMap | null>(null);
+    const usesClipRunUpRef = useRef(false);
 
     useLayoutEffect(() => {
       if (groupRef.current) setBowlerHome(groupRef.current);
@@ -83,50 +85,53 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
         timelineRef.current?.kill();
         cancelMotionsFor(group);
         player.endProcedural();
-        runUpRestRef.current = null;
+        bindRestRef.current = null;
+        usesClipRunUpRef.current = false;
         setBowlerHome(group);
 
         const distance = getBowlerRunUpDistance();
         let moveDuration: number = animationTimings.runUp;
-        let yBob = { amplitude: 0.12, period: 0.18 };
-        let usedProceduralRunUp = false;
 
         if (player.hasClip('run')) {
+          usesClipRunUpRef.current = true;
           const sync = syncRunLocomotion(distance);
           moveDuration = sync.duration;
-          yBob = sync.yBob;
           player.playClip(CLIPS.run, true, 0.15, sync.clipTimeScale);
+          await animatePosition(
+            group,
+            { x: scenePositions.bowlerCreaseX, z: 0, y: 0 },
+            moveDuration,
+            { ease: 'power2InOut', yBob: sync.yBob },
+          );
+          player.stopClips();
         } else if (player.hasClip('walk')) {
+          usesClipRunUpRef.current = true;
           const sync = syncCricketWalkRunUp(distance);
           moveDuration = sync.duration;
-          yBob = sync.yBob;
           player.playClip(CLIPS.walk, true, 0.15, sync.clipTimeScale);
+          await animatePosition(
+            group,
+            { x: scenePositions.bowlerCreaseX, z: 0, y: 0 },
+            moveDuration,
+            { ease: 'power2InOut', yBob: sync.yBob },
+          );
+          player.stopClips();
         } else {
           const sync = syncCricketBowlerRunUp(distance);
           moveDuration = sync.duration;
-          yBob = sync.yBob;
-          usedProceduralRunUp = true;
+          const bindRest = player.beginProcedural();
+          bindRestRef.current = bindRest;
 
-          const rest = player.beginProcedural();
-          runUpRestRef.current = rest;
-          const parts = player.getParts();
-          applyCricketRunUpPose(parts, rest);
-          timelineRef.current = buildCricketRunUpTimeline(parts, rest, moveDuration);
-        }
-
-        await animatePosition(
-          group,
-          { x: scenePositions.bowlerCreaseX, z: 0, y: 0 },
-          moveDuration,
-          { ease: 'power2InOut', yBob },
-        );
-
-        timelineRef.current?.kill();
-        timelineRef.current = null;
-        player.stopClips();
-
-        if (!usedProceduralRunUp) {
-          player.endProcedural();
+          const { timeline, runUpEndTime } = buildUnifiedBowlerTimeline(
+            player.getParts(),
+            bindRest,
+            group,
+            moveDuration,
+          );
+          timelineRef.current = timeline;
+          runUpEndTimeRef.current = runUpEndTime;
+          timeline.play();
+          await timelineUntil(timeline, runUpEndTime);
         }
 
         const durationMs = performance.now() - start;
@@ -146,17 +151,60 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
         const player = playerRef.current!;
         const group = groupRef.current!;
 
-        timelineRef.current?.kill();
-        player.stopClips();
+        if (player.hasClip('bowl')) {
+          timelineRef.current?.kill();
+          timelineRef.current = null;
+          bindRestRef.current = null;
+          player.endProcedural();
+          player.stopClips();
 
-        const rest = runUpRestRef.current ?? player.beginProcedural();
-        runUpRestRef.current = null;
+          const clipDuration = player.getClipDuration('bowl') ?? 4;
+          const pace = Math.max(0.85, Math.min(1.2, (deliverySpeedKmh ?? 132) / 132));
+          const animDuration = clipDuration / pace;
+          const movePromise = animatePosition(
+            group,
+            { x: scenePositions.bowlerCreaseX - 1.4, z: 0, y: 0 },
+            animDuration * 0.88,
+            { ease: 'power1.out' },
+          );
+          const animPromise = player.playClipOnce('bowl', {
+            onRelease,
+            releaseFraction: 0.38,
+            timeScale: pace,
+          });
+          await Promise.all([movePromise, animPromise]);
+          usesClipRunUpRef.current = false;
+          const durationMs = performance.now() - start;
+          return { ok: durationMs >= MIN_BOWL_MS, durationMs };
+        }
 
-        const tl = buildBowlingTimeline(player.getParts(), rest, group, onRelease, {
-          deliverySpeedKmh,
-        });
-        timelineRef.current = tl;
-        await timelineToPromise(tl);
+        const bindRest = bindRestRef.current ?? player.beginProcedural();
+        bindRestRef.current = null;
+
+        if (timelineRef.current && !usesClipRunUpRef.current) {
+          const tl = timelineRef.current;
+          const speed = deliverySpeedKmh ?? 132;
+          const releaseTime =
+            runUpEndTimeRef.current + 0.3 * (132 / Math.max(90, Math.min(160, speed)));
+          if (onRelease) tl.call(onRelease, undefined, releaseTime);
+          tl.play();
+          await timelineToPromise(tl);
+          timelineRef.current = null;
+        } else {
+          timelineRef.current?.kill();
+          player.stopClips();
+
+          const tl = buildBowlingTimeline(player.getParts(), bindRest, group, onRelease, {
+            deliverySpeedKmh,
+            skipGather: false,
+          });
+          timelineRef.current = tl;
+          tl.play();
+          await timelineToPromise(tl);
+          timelineRef.current = null;
+        }
+
+        usesClipRunUpRef.current = false;
         player.endProcedural();
 
         const durationMs = performance.now() - start;
@@ -166,7 +214,8 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
       reset: () => {
         timelineRef.current?.kill();
         timelineRef.current = null;
-        runUpRestRef.current = null;
+        bindRestRef.current = null;
+        usesClipRunUpRef.current = false;
         if (groupRef.current) {
           cancelMotionsFor(groupRef.current);
           setBowlerHome(groupRef.current);

@@ -20,7 +20,14 @@ export interface FielderConfig {
 export interface TeamAConfig {
   name: string;
   kitColor: string;
-  bowler: { name: string; showCap?: boolean };
+  bowler: {
+    name: string;
+    showCap?: boolean;
+    /** Optional GLB override (e.g. Meshy rig with run + pitch clips). */
+    modelUrl?: string;
+    /** Optional kit override — defaults to team kitColor. */
+    kitColor?: string;
+  };
   keeper: { name: string };
   fielders: FielderConfig[];
 }
@@ -134,6 +141,12 @@ export function validateMatchConfig(raw: unknown): MatchConfig {
         bowler: {
           name: requireString(teamA.bowler, 'name', 'teams.teamA.bowler'),
           showCap: teamA.bowler.showCap === true,
+          ...(typeof teamA.bowler.modelUrl === 'string' && teamA.bowler.modelUrl.trim()
+            ? { modelUrl: teamA.bowler.modelUrl.trim() }
+            : {}),
+          ...(typeof teamA.bowler.kitColor === 'string' && HEX_COLOR.test(teamA.bowler.kitColor)
+            ? { kitColor: teamA.bowler.kitColor }
+            : {}),
         },
         keeper: {
           name: requireString(teamA.keeper, 'name', 'teams.teamA.keeper'),

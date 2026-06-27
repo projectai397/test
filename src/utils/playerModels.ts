@@ -29,12 +29,16 @@ export const MODEL_PATHS = {
   cricketKeeper: '/models/cricket-keeper.glb',
   /** Same as cricketPlayer — Indian Cricket Player + procedural umpire coat/hat (free). */
   cricketUmpire: '/models/cricket-player.glb',
+  /** Meshy rig — Running, Walking, baseball_pitching clips. */
+  meshyBowler: '/models/meshy-bowler.glb',
 } as const;
 
 export const CLIPS = {
   idle: 'Idle',
   walk: 'Walk',
   run: 'Run',
+  /** Meshy baseball_pitching — used as bowling delivery. */
+  bowl: 'bowl',
 } as const;
 
 export type ClipKey = keyof typeof CLIPS;
@@ -82,12 +86,31 @@ const ROLE_CONFIG: Record<PlayerRole, PlayerModelConfig> = {
 
 export function getPlayerModelConfig(role: PlayerRole, customUrl?: string): PlayerModelConfig {
   const base = ROLE_CONFIG[role];
-  if (customUrl) return { ...base, url: customUrl };
-  return base;
+  if (!customUrl) return base;
+  if (isMeshyBowlerUrl(customUrl)) {
+    return {
+      ...base,
+      url: customUrl,
+      profile: 'mixamo',
+      skipKitRecolor: true,
+      minimalGear: true,
+      scale: 1,
+      rotationY: 0,
+    };
+  }
+  return { ...base, url: customUrl };
 }
 
 export function isCricketProfile(config: PlayerModelConfig): boolean {
   return config.profile === 'cricket';
+}
+
+export function isMixamoProfile(config: PlayerModelConfig): boolean {
+  return config.profile === 'mixamo';
+}
+
+export function isMeshyBowlerUrl(url: string): boolean {
+  return url.includes('meshy-bowler');
 }
 
 export function isStaticProfile(config: PlayerModelConfig): boolean {
@@ -125,6 +148,19 @@ export function resolveClipName(
 ): string | null {
   const wanted = CLIPS[key].toLowerCase();
   const names = Object.keys(actions).filter((n) => actions[n]);
+
+  if (key === 'run') {
+    const runLike = names.find((n) => /^running$/i.test(n));
+    if (runLike) return runLike;
+    const runPartial = names.find((n) => /(^run|_run)/i.test(n) && !/walk/i.test(n));
+    if (runPartial) return runPartial;
+  }
+
+  if (key === 'bowl') {
+    const bowlLike = names.find((n) => /pitch|bowl|throw|deliver/i.test(n));
+    if (bowlLike) return bowlLike;
+  }
+
   const exact = names.find((n) => n.toLowerCase() === wanted);
   if (exact) return exact;
   const partial = names.find((n) => n.toLowerCase().includes(wanted));
@@ -146,6 +182,16 @@ export function hasResolvedClip(
   return resolveClipName(actions, key) !== null;
 }
 
+export function getClipDuration(
+  actions: Record<string, THREE.AnimationAction | null | undefined>,
+  key: ClipKey,
+): number | null {
+  const name = resolveClipName(actions, key);
+  const action = name ? actions[name] : null;
+  if (!action) return null;
+  return action.getClip().duration;
+}
+
 /** First animation in a cricket GLB (usually idle / stance). */
 export function resolveFirstClip(
   actions: Record<string, THREE.AnimationAction | null | undefined>,
@@ -156,6 +202,35 @@ export function resolveFirstClip(
 
 /** Material names that are clothing only — never skin, hair, face, or body. */
 const KIT_MATERIAL = /^Wolf3D_Outfit_(Top|Bottom|Footwear)$/i;
+
+/** Tint Meshy kit onto albedo — keeps texture so dark hair stays black (map × color). */
+export function applyMeshyKitLook(root: THREE.Object3D, teamColor?: string) {
+  const kit = new THREE.Color(teamColor ?? TEAM_KIT_RED);
+  root.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    const mats = Array.isArray(child.material) ? child.material : [child.material];
+    const nextMats = mats.map((mat) => {
+      if (!(mat instanceof THREE.MeshStandardMaterial)) return mat;
+      const kitMat = mat.clone();
+      kitMat.name = mat.name;
+      kitMat.color.copy(kit);
+      if (mat.map) {
+        kitMat.map = mat.map;
+        kitMat.map.colorSpace = THREE.SRGBColorSpace;
+      }
+      kitMat.emissive.set(0, 0, 0);
+      kitMat.emissiveIntensity = 0;
+      kitMat.emissiveMap = null;
+      kitMat.roughness = mat.roughness ?? 0.55;
+      kitMat.metalness = mat.metalness ?? 0.05;
+      kitMat.needsUpdate = true;
+      return kitMat;
+    });
+    if (nextMats.some((m, i) => m !== mats[i])) {
+      child.material = Array.isArray(child.material) ? nextMats : nextMats[0]!;
+    }
+  });
+}
 
 export function applyCricketKitLook(root: THREE.Object3D, teamColor?: string) {
   const kit = new THREE.Color(teamColor ?? TEAM_KIT_RED);

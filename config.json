@@ -5,7 +5,9 @@
       "kitColor": "#dc2626",
       "bowler": {
         "name": "B Stokes",
-        "showCap": true
+        "showCap": true,
+        "modelUrl": "/models/meshy-bowler.glb",
+        "kitColor": "#2563eb"
       },
       "keeper": {
         "name": "J Smith"

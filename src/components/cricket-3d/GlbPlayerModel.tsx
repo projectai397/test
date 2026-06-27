@@ -7,13 +7,18 @@ import {
 } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations, Html } from '@react-three/drei';
+import gsap from 'gsap';
 import * as THREE from 'three';
 import {
   CLIPS,
   applyCricketKitLook,
+  applyMeshyKitLook,
   applyUmpireKitLook,
   getPlayerModelConfig,
+  getClipDuration,
   isCricketProfile,
+  isMeshyBowlerUrl,
+  isMixamoProfile,
   isStaticProfile,
   hasResolvedClip,
   resolveClipName,
@@ -38,8 +43,18 @@ export interface GlbPlayerModelHandle {
   getParts: () => PlayerBones;
   getBoneRestPose: () => BoneRestMap;
   getModelProfile: () => ModelProfile;
-  hasClip: (key: keyof typeof CLIPS) => boolean;
+  hasClip: (key: ClipKey) => boolean;
+  getClipDuration: (key: ClipKey) => number | null;
   playClip: (clipName: string, loop?: boolean, fade?: number, timeScale?: number) => void;
+  playClipOnce: (
+    key: ClipKey,
+    options?: {
+      fade?: number;
+      timeScale?: number;
+      onRelease?: () => void;
+      releaseFraction?: number;
+    },
+  ) => Promise<number>;
   stopClips: () => void;
   beginProcedural: () => BoneRestMap;
   endProcedural: () => void;
@@ -79,6 +94,8 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
     const proceduralActive = useRef(false);
     const skinnedMeshesRef = useRef<THREE.SkinnedMesh[]>([]);
     const readyRef = useRef(false);
+    /** Bind-pose reference — never overwritten; procedural deltas are relative to this. */
+    const bindRestRef = useRef<BoneRestMap>(new Map());
     const restPoseRef = useRef<BoneRestMap>(new Map());
 
     if (!handAnchorRef.current) handAnchorRef.current = new THREE.Group();
@@ -106,14 +123,19 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
 
     const playIdle = () => {
       if (proceduralActive.current) return;
-      const idleName = isCricketProfile(config)
-        ? resolveFirstClip(actionsRef.current)
-        : resolveClipName(actionsRef.current, 'idle');
+      let idleName: string | null;
+      if (isCricketProfile(config)) {
+        idleName = resolveFirstClip(actionsRef.current);
+      } else if (isMixamoProfile(config)) {
+        idleName = resolveClipName(actionsRef.current, 'walk');
+      } else {
+        idleName = resolveClipName(actionsRef.current, 'idle');
+      }
       if (!idleName || !actionsRef.current[idleName]) return;
       const idle = actionsRef.current[idleName]!;
       idle.reset();
       idle.setLoop(THREE.LoopRepeat, Infinity);
-      idle.setEffectiveTimeScale(1);
+      idle.setEffectiveTimeScale(isMixamoProfile(config) ? 0.02 : 1);
       idle.setEffectiveWeight(1);
       idle.fadeIn(0.15).play();
       currentAction.current = idle;
@@ -137,6 +159,7 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
       });
 
       if (isStaticProfile(config)) {
+        bindRestRef.current = new Map();
         restPoseRef.current = new Map();
         readyRef.current = true;
         console.debug(`[GlbPlayerModel] ready (${role}) static mesh`);
@@ -146,6 +169,8 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
       if (!config.skipKitRecolor) {
         if (role === 'umpire') applyUmpireKitLook(scene);
         else if (config.color) applyCricketKitLook(scene, config.color);
+      } else if (isMeshyBowlerUrl(config.url) && config.color) {
+        applyMeshyKitLook(scene, config.color);
       }
 
       const resolved = resolvePlayerBones(scene, config.profile);
@@ -201,7 +226,8 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         batObjectRef.current = bat;
       }
 
-      restPoseRef.current = captureBoneRestPose(getParts());
+      bindRestRef.current = captureBoneRestPose(getParts());
+      restPoseRef.current = bindRestRef.current;
       playIdle();
       readyRef.current = !!b.torso && !!b.armR;
       if (readyRef.current) {
@@ -232,9 +258,10 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
       getRootRef: () => groupRef.current,
       getBatRef: () => batObjectRef.current,
       getParts,
-      getBoneRestPose: () => restPoseRef.current,
+      getBoneRestPose: () => bindRestRef.current,
       getModelProfile: () => config.profile,
       hasClip: (key: ClipKey) => hasResolvedClip(actionsRef.current, key),
+      getClipDuration: (key: ClipKey) => getClipDuration(actionsRef.current, key),
       playClip: (clipName, loop = true, fade = 0.25, timeScale?: number) => {
         if (proceduralActive.current) return;
         const key = (Object.keys(CLIPS) as Array<keyof typeof CLIPS>).find(
@@ -257,17 +284,62 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         next.fadeIn(fade).play();
         currentAction.current = next;
       },
+      playClipOnce: (key, options = {}) => {
+        const { fade = 0.2, timeScale = 1, onRelease, releaseFraction = 0.38 } = options;
+        return new Promise((resolve) => {
+          if (!mixer) {
+            resolve(0);
+            return;
+          }
+          proceduralActive.current = false;
+          const resolved = resolveClipName(actionsRef.current, key);
+          const next = resolved ? actionsRef.current[resolved] : undefined;
+          if (!next) {
+            console.warn(`[GlbPlayerModel] clip not found: ${key}`);
+            resolve(0);
+            return;
+          }
+          const clipDuration = next.getClip().duration / timeScale;
+          mixer.stopAllAction();
+          next.reset();
+          next.setLoop(THREE.LoopOnce, 1);
+          next.clampWhenFinished = true;
+          next.setEffectiveTimeScale(timeScale);
+          next.setEffectiveWeight(1);
+          next.fadeIn(fade).play();
+          currentAction.current = next;
+
+          if (onRelease) {
+            gsap.delayedCall(clipDuration * releaseFraction, onRelease);
+          }
+
+          let settled = false;
+          const finish = (duration: number) => {
+            if (settled) return;
+            settled = true;
+            mixer!.removeEventListener('finished', onFinished as never);
+            resolve(duration);
+          };
+
+          const onFinished = (event: { action: THREE.AnimationAction }) => {
+            if (event.action !== next) return;
+            finish(clipDuration);
+          };
+          mixer.addEventListener('finished', onFinished as never);
+
+          gsap.delayedCall(clipDuration + 0.2, () => finish(clipDuration));
+        });
+      },
       stopClips: () => {
         mixer?.stopAllAction();
         currentAction.current = null;
       },
       beginProcedural: () => {
-        if (isStaticProfile(config)) return restPoseRef.current;
+        if (isStaticProfile(config)) return bindRestRef.current;
         proceduralActive.current = true;
         mixer?.stopAllAction();
         currentAction.current = null;
-        restPoseRef.current = captureBoneRestPose(getParts());
-        return restPoseRef.current;
+        return bindRestRef.current;
       },
       endProcedural: () => {
         proceduralActive.current = false;
@@ -275,7 +347,7 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
       },
       resetPose: () => {
         proceduralActive.current = false;
-        restoreBoneRestPose(restPoseRef.current);
+        restoreBoneRestPose(bindRestRef.current);
         if (batObjectRef.current) batObjectRef.current.rotation.set(0.25, 0, -0.35);
         playIdle();
       },
@@ -297,3 +369,4 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
 useGLTF.preload('/models/cricket-player.glb');
 useGLTF.preload('/models/cricket-batsman.glb');
 useGLTF.preload('/models/cricket-keeper.glb');
+useGLTF.preload('/models/meshy-bowler.glb');
