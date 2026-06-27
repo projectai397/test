@@ -12,7 +12,7 @@ import {
   timelineUntil,
 } from '../../utils/cricketProcedural';
 import { scenePositions, animationTimings } from '../../utils/animationTimings';
-import { bowlerFacingTowardStriker } from '../../utils/playerFacing';
+import { bowlerFacingTowardStriker, meshyBowlerDeliveryInnerRotation } from '../../utils/playerFacing';
 import type { BoneRestMap } from '../../utils/boneRestPose';
 import {
   getBowlerRunUpDistance,
@@ -168,12 +168,19 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
           group.position.set(scenePositions.bowlerCreaseX, 0, 0);
           group.rotation.set(0, bowlerFacingTowardStriker(modelUrl), 0);
 
+          const deliveryInnerRot = meshyBowlerDeliveryInnerRotation(modelUrl);
+          player.setDeliveryRotationOffset(deliveryInnerRot);
+
           const pace = Math.max(0.85, Math.min(1.2, (deliverySpeedKmh ?? 132) / 132));
-          await player.playClipOnce('bowl', {
-            onRelease,
-            releaseFraction: 0.38,
-            timeScale: pace,
-          });
+          try {
+            await player.playClipOnce('bowl', {
+              onRelease,
+              releaseFraction: 0.38,
+              timeScale: pace,
+            });
+          } finally {
+            player.setDeliveryRotationOffset(0);
+          }
           usesClipRunUpRef.current = false;
           const durationMs = performance.now() - start;
           return { ok: durationMs >= MIN_BOWL_MS, durationMs };

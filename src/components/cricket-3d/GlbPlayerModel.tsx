@@ -61,6 +61,7 @@ export interface GlbPlayerModelHandle {
   beginProcedural: () => BoneRestMap;
   endProcedural: () => void;
   resetPose: () => void;
+  setDeliveryRotationOffset: (offsetY: number) => void;
 }
 
 interface GlbPlayerModelProps {
@@ -99,6 +100,12 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
     /** Bind-pose reference — never overwritten; procedural deltas are relative to this. */
     const bindRestRef = useRef<BoneRestMap>(new Map());
     const restPoseRef = useRef<BoneRestMap>(new Map());
+    const deliveryRotationOffsetRef = useRef(0);
+
+    const applyModelRotation = () => {
+      if (!groupRef.current) return;
+      groupRef.current.rotation.y = config.rotationY + deliveryRotationOffsetRef.current;
+    };
 
     if (!handAnchorRef.current) handAnchorRef.current = new THREE.Group();
     if (!headAnchorRef.current) headAnchorRef.current = new THREE.Group();
@@ -362,9 +369,15 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
       },
       resetPose: () => {
         proceduralActive.current = false;
+        deliveryRotationOffsetRef.current = 0;
+        applyModelRotation();
         restoreBoneRestPose(bindRestRef.current);
         if (batObjectRef.current) batObjectRef.current.rotation.set(0.25, 0, -0.35);
         playIdle();
+      },
+      setDeliveryRotationOffset: (offsetY: number) => {
+        deliveryRotationOffsetRef.current = offsetY;
+        applyModelRotation();
       },
     }));
 
