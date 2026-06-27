@@ -2,6 +2,7 @@ import type { Vec3 } from '../types/cricket-ball-event';
 import { scenePositions } from './animationTimings';
 
 export type CameraViewPreset =
+  | 'stadium'
   | 'broadcast'
   | 'side_on'
   | 'behind_bowler'
@@ -30,6 +31,14 @@ const strikerCrease: Vec3 = { x: scenePositions.strikerEndX, y: 1.2, z: 0 };
 const bowlerCrease: Vec3 = { x: scenePositions.bowlerCreaseX, y: 1.2, z: 0 };
 
 export const CAMERA_PRESETS: CameraPresetConfig[] = [
+  {
+    id: 'stadium',
+    label: 'Stadium',
+    shortLabel: 'Stadium',
+    position: { x: pitchCenter.x + 36, y: 22, z: 0 },
+    lookAt: pitchCenter,
+    fov: 48,
+  },
   {
     id: 'broadcast',
     label: 'Broadcast',

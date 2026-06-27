@@ -5,7 +5,91 @@
       "shirt": "#dc2626",
       "trousers": "#1a1a1a",
       "modelUrl": "/models/meshy-bowler-dc2626-1a1a1a.glb",
-      "generatedAt": "2026-06-27T00:00:00.000Z"
+      "generatedAt": "2026-06-27T07:32:58.964Z"
+    },
+    {
+      "kitHash": "2563eb-1a1a1a",
+      "shirt": "#2563eb",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-2563eb-1a1a1a.glb",
+      "generatedAt": "2026-06-27T07:35:51.394Z"
+    },
+    {
+      "kitHash": "16a34a-1a1a1a",
+      "shirt": "#16a34a",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-16a34a-1a1a1a.glb",
+      "generatedAt": "2026-06-27T07:38:37.789Z"
+    },
+    {
+      "kitHash": "eab308-1a1a1a",
+      "shirt": "#eab308",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-eab308-1a1a1a.glb",
+      "generatedAt": "2026-06-27T07:41:21.167Z"
+    },
+    {
+      "kitHash": "f97316-1a1a1a",
+      "shirt": "#f97316",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-f97316-1a1a1a.glb",
+      "generatedAt": "2026-06-27T07:45:34.134Z"
+    },
+    {
+      "kitHash": "9333ea-1a1a1a",
+      "shirt": "#9333ea",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-9333ea-1a1a1a.glb",
+      "generatedAt": "2026-06-27T07:48:41.838Z"
+    },
+    {
+      "kitHash": "ffffff-1a1a1a",
+      "shirt": "#ffffff",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-ffffff-1a1a1a.glb",
+      "generatedAt": "2026-06-27T07:51:25.144Z"
+    },
+    {
+      "kitHash": "1e3a8a-1a1a1a",
+      "shirt": "#1e3a8a",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-1e3a8a-1a1a1a.glb",
+      "generatedAt": "2026-06-27T07:54:13.857Z"
+    },
+    {
+      "kitHash": "0ea5e9-1a1a1a",
+      "shirt": "#0ea5e9",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-0ea5e9-1a1a1a.glb",
+      "generatedAt": "2026-06-27T07:56:55.838Z"
+    },
+    {
+      "kitHash": "ec4899-1a1a1a",
+      "shirt": "#ec4899",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-ec4899-1a1a1a.glb",
+      "generatedAt": "2026-06-27T07:59:34.903Z"
+    },
+    {
+      "kitHash": "991b1b-1a1a1a",
+      "shirt": "#991b1b",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-991b1b-1a1a1a.glb",
+      "generatedAt": "2026-06-27T08:02:19.325Z"
+    },
+    {
+      "kitHash": "ca8a04-1a1a1a",
+      "shirt": "#ca8a04",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-ca8a04-1a1a1a.glb",
+      "generatedAt": "2026-06-27T08:05:02.747Z"
+    },
+    {
+      "kitHash": "171717-1a1a1a",
+      "shirt": "#171717",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-171717-1a1a1a.glb",
+      "generatedAt": "2026-06-27T08:07:45.516Z"
     }
   ],
   "defaultBowlerUrl": "/models/meshy-bowler-dc2626-1a1a1a.glb"

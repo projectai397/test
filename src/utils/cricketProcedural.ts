@@ -9,6 +9,8 @@ import {
   CRICKET_RUNUP_STRIDES,
   type BowlingPose,
 } from './wolf3dBowlingPoses';
+import { MESHY_BOWLING_PHASES } from './meshyBowlingPoses';
+import { isMeshyBowlerUrl } from './playerModels';
 
 export interface PlayerBones {
   hips: THREE.Object3D | null;
@@ -133,13 +135,18 @@ export function applyCricketRunUpPose(bones: PlayerBones, rest: BoneRestMap): vo
   applyPose(bones, rest, CRICKET_RUNUP_HOLD);
 }
 
-/** Seconds into buildBowlingTimeline when the ball leaves the hand (132 km/h baseline). */
-export const BOWLING_RELEASE_TIME = 0.52;
+/** Seconds into release phase when the ball leaves the hand (132 km/h baseline). */
+export const BOWLING_RELEASE_INTO_RELEASE_PHASE = 0.075;
 
 export interface BowlingTimelineOptions {
   deliverySpeedKmh?: number;
   /** Run-up already ended in gather pose — skip first delivery phase. */
   skipGather?: boolean;
+  modelUrl?: string;
+}
+
+function bowlingPhases(modelUrl?: string) {
+  return modelUrl && isMeshyBowlerUrl(modelUrl) ? MESHY_BOWLING_PHASES : BOWLING_PHASES;
 }
 
 function bowlingPaceScale(speedKmh: number): number {
@@ -199,15 +206,15 @@ export function buildBowlingTimeline(
   rest: BoneRestMap,
   group: THREE.Object3D,
   onRelease?: () => void,
-  options?: BowlingTimelineOptions & { modelUrl?: string },
+  options?: BowlingTimelineOptions,
 ): gsap.core.Timeline {
   const speed = options?.deliverySpeedKmh ?? 132;
   const scale = bowlingPaceScale(speed);
   const d = (t: number) => t * scale;
   const skipGather = options?.skipGather ?? false;
+  const p = bowlingPhases(options?.modelUrl);
 
   const tl = gsap.timeline();
-  const p = BOWLING_PHASES;
   let t0 = 0;
 
   if (!skipGather) {
@@ -218,8 +225,13 @@ export function buildBowlingTimeline(
   tweenPose(tl, bones, rest, p.bound, d(0.09), t0, 'power2.out', true);
   tweenPose(tl, bones, rest, p.plant, d(0.14), t0 + d(0.09), 'power3.in', true);
   tweenPose(tl, bones, rest, p.release, d(0.12), t0 + d(0.23), 'power4.in', true);
-  const releaseAt = skipGather ? t0 + d(0.3) : t0 + d(BOWLING_RELEASE_TIME);
+
+  const releasePhaseStart = t0 + d(0.23);
+  const releaseAt = skipGather
+    ? t0 + d(0.26)
+    : releasePhaseStart + d(BOWLING_RELEASE_INTO_RELEASE_PHASE);
   tl.call(() => onRelease?.(), undefined, releaseAt);
+
   tweenPose(tl, bones, rest, p.followThrough, d(0.38), t0 + d(0.35), 'power2.out', true);
 
   const jumpStart = t0;

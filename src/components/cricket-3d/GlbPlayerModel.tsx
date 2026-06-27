@@ -64,6 +64,7 @@ export interface GlbPlayerModelHandle {
   endProcedural: () => void;
   resetPose: () => void;
   setDeliveryRotationOffset: (offsetY: number) => void;
+  syncSkeletonMatrices: () => void;
 }
 
 interface GlbPlayerModelProps {
@@ -406,6 +407,12 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
       setDeliveryRotationOffset: (offsetY: number) => {
         deliveryRotationOffsetRef.current = offsetY;
         applyModelRotation();
+      },
+      syncSkeletonMatrices: () => {
+        for (const mesh of skinnedMeshesRef.current) {
+          mesh.skeleton.bones.forEach((bone) => bone.updateMatrixWorld(true));
+        }
+        handAnchorRef.current?.updateWorldMatrix(true, false);
       },
     }));
 

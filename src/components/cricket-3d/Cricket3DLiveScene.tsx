@@ -97,22 +97,23 @@ function CricketScene({
 
   return (
     <>
-      <color attach="background" args={['#87a8c4']} />
-      <fog attach="fog" args={['#87a8c4', 60, 120]} />
+      <color attach="background" args={['#87CEEB']} />
 
-      <ambientLight intensity={0.45} />
+      <ambientLight intensity={0.4} color="#c9e8ff" />
       <directionalLight
-        position={[30, 40, 20]}
-        intensity={1.4}
+        position={[28, 52, 22]}
+        intensity={1.5}
+        color="#fffef8"
         castShadow
         shadow-mapSize={[2048, 2048]}
-        shadow-camera-far={80}
-        shadow-camera-left={-30}
-        shadow-camera-right={30}
-        shadow-camera-top={30}
-        shadow-camera-bottom={-30}
+        shadow-camera-far={130}
+        shadow-camera-left={-65}
+        shadow-camera-right={65}
+        shadow-camera-top={65}
+        shadow-camera-bottom={-65}
+        shadow-normalBias={0.02}
+        shadow-bias={-0.0001}
       />
-      <hemisphereLight args={['#b1e1ff', '#3d5c3a', 0.4]} />
 
       <MotionRafSync />
       <CameraController />
@@ -280,7 +281,7 @@ export function Cricket3DLiveScene({
           near: 0.1,
           far: 200,
         }}
-        gl={{ antialias: true, alpha: false }}
+        gl={{ antialias: true, alpha: false, toneMappingExposure: 1.0 }}
       >
         <Suspense fallback={<SceneLoader />}>
           <CricketScene
