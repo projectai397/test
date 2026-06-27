@@ -31,32 +31,33 @@ export const Stumps = forwardRef<StumpsHandle, StumpsProps>(function Stumps(
   useImperativeHandle(ref, () => ({
     triggerWicket: () => {
       if (bail1Ref.current) {
-        bail1Ref.current.rotation.z = 0.8;
+        bail1Ref.current.rotation.x = 0.8;
         bail1Ref.current.position.y = STUMP_HEIGHT * 0.75;
-        bail1Ref.current.position.x = bailHalfSpan + 0.04;
+        bail1Ref.current.position.z = -bailHalfSpan - 0.04;
       }
       if (bail2Ref.current) {
-        bail2Ref.current.rotation.z = -0.7;
+        bail2Ref.current.rotation.x = -0.7;
         bail2Ref.current.position.y = STUMP_HEIGHT * 0.72;
-        bail2Ref.current.position.x = -(bailHalfSpan + 0.02);
+        bail2Ref.current.position.z = bailHalfSpan + 0.02;
       }
     },
     reset: () => {
       if (bail1Ref.current) {
         bail1Ref.current.rotation.set(0, 0, 0);
-        bail1Ref.current.position.set(-bailHalfSpan, bailY, 0);
+        bail1Ref.current.position.set(0, bailY, -bailHalfSpan);
       }
       if (bail2Ref.current) {
         bail2Ref.current.rotation.set(0, 0, 0);
-        bail2Ref.current.position.set(bailHalfSpan, bailY, 0);
+        bail2Ref.current.position.set(0, bailY, bailHalfSpan);
       }
     },
   }));
 
+  /** Stumps in a row across the pitch (perpendicular to pitch length along +X). */
   const stumpPositions: [number, number, number][] = [
-    [-STUMP_SPREAD, STUMP_HEIGHT / 2, 0],
+    [0, STUMP_HEIGHT / 2, -STUMP_SPREAD],
     [0, STUMP_HEIGHT / 2, 0],
-    [STUMP_SPREAD, STUMP_HEIGHT / 2, 0],
+    [0, STUMP_HEIGHT / 2, STUMP_SPREAD],
   ];
 
   const stumpMat = (
@@ -80,11 +81,11 @@ export const Stumps = forwardRef<StumpsHandle, StumpsProps>(function Stumps(
         </mesh>
       ))}
 
-      <mesh ref={bail1Ref} position={[-bailHalfSpan, bailY, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+      <mesh ref={bail1Ref} position={[0, bailY, -bailHalfSpan]} rotation={[Math.PI / 2, 0, 0]} castShadow>
         <cylinderGeometry args={[BAIL_RADIUS, BAIL_RADIUS, BAIL_LENGTH, 8]} />
         {bailMat}
       </mesh>
-      <mesh ref={bail2Ref} position={[bailHalfSpan, bailY, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+      <mesh ref={bail2Ref} position={[0, bailY, bailHalfSpan]} rotation={[Math.PI / 2, 0, 0]} castShadow>
         <cylinderGeometry args={[BAIL_RADIUS, BAIL_RADIUS, BAIL_LENGTH, 8]} />
         {bailMat}
       </mesh>
