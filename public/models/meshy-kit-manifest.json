@@ -76,6 +76,20 @@
       "trousers": "#1a1a1a",
       "modelUrl": "/models/meshy-bowler-991b1b-1a1a1a.glb",
       "generatedAt": "2026-06-27T08:02:19.325Z"
+    },
+    {
+      "kitHash": "ca8a04-1a1a1a",
+      "shirt": "#ca8a04",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-ca8a04-1a1a1a.glb",
+      "generatedAt": "2026-06-27T08:05:02.747Z"
+    },
+    {
+      "kitHash": "171717-1a1a1a",
+      "shirt": "#171717",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-171717-1a1a1a.glb",
+      "generatedAt": "2026-06-27T08:07:45.516Z"
     }
   ],
   "defaultBowlerUrl": "/models/meshy-bowler-dc2626-1a1a1a.glb"
