@@ -17,6 +17,18 @@ export interface ReleaseParams {
   handForward?: { x: number; y: number; z: number };
 }
 
+/** Unit vector from release point down the pitch toward the striker end. */
+export function pitchDirectionTowardStriker(
+  releaseWorldPos: { x: number; y: number; z: number },
+  lineOffsetZ: number,
+): THREE.Vector3 {
+  const dx = scenePositions.strikerEndX - releaseWorldPos.x;
+  const dy = 0.75 - releaseWorldPos.y;
+  const dz = lineOffsetZ - releaseWorldPos.z;
+  const len = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
+  return new THREE.Vector3(dx / len, dy / len, dz / len);
+}
+
 /** +Z bind model — world-space forward from the bowling hand at release. */
 export function getHandReleaseForward(hand: THREE.Object3D): THREE.Vector3 {
   hand.updateWorldMatrix(true, false);
@@ -32,42 +44,27 @@ export function computeReleaseVelocity(params: ReleaseParams): {
   z: number;
 } {
   const speed = speedKmhToMs(params.speedKmh);
-  const dx = scenePositions.strikerEndX - params.releaseWorldPos.x;
-  const dy = 0.75 - params.releaseWorldPos.y;
-  const dz = params.lineOffsetZ - params.releaseWorldPos.z;
-  const targetLen = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
-  const tx = dx / targetLen;
-  const ty = dy / targetLen;
-  const tz = dz / targetLen;
+  const pitchDir = pitchDirectionTowardStriker(params.releaseWorldPos, params.lineOffsetZ);
 
-  let dirX: number;
-  let dirY: number;
-  let dirZ: number;
+  let dirX = pitchDir.x;
+  let dirY = pitchDir.y - 0.06;
+  let dirZ = pitchDir.z;
 
   if (params.handForward) {
     const hf = params.handForward;
     const hLen = Math.sqrt(hf.x * hf.x + hf.y * hf.y + hf.z * hf.z) || 1;
-    const hx = hf.x / hLen;
     const hy = hf.y / hLen;
     const hz = hf.z / hLen;
-    dirX = hx * 0.7 + tx * 0.3;
-    dirY = hy * 0.7 + ty * 0.3 - 0.12;
-    dirZ = hz * 0.7 + tz * 0.3;
-    dirX = dirX * 0.85 - 0.15;
-    const dLen = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ) || 1;
-    dirX /= dLen;
-    dirY /= dLen;
-    dirZ /= dLen;
-  } else {
-    dirX = tx * 0.95;
-    dirY = ty * 0.95 - 0.05;
-    dirZ = tz * 0.95;
+    // Hand pose only nudges height and line — pitch always travels toward the batsman.
+    dirY = hy * 0.25 + pitchDir.y * 0.75 - 0.06;
+    dirZ = hz * 0.35 + pitchDir.z * 0.65;
   }
 
+  const dLen = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ) || 1;
   return {
-    x: dirX * speed,
-    y: dirY * speed + 0.4,
-    z: dirZ * speed,
+    x: (dirX / dLen) * speed,
+    y: (dirY / dLen) * speed + 0.4,
+    z: (dirZ / dLen) * speed,
   };
 }
 
