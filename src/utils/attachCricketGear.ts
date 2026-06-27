@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import type { PlayerRole } from './playerModels';
 import type { PlayerBones } from './cricketProcedural';
-import { trouserColorFromKit } from './kitColors';
 interface GearBones extends PlayerBones {
   head: THREE.Object3D | null;
   handL: THREE.Object3D | null;
@@ -58,11 +57,9 @@ function attachWideBrimHat(head: THREE.Object3D, color: string) {
 
   const g = new THREE.Group();
   g.name = 'UmpireWideBrimHat';
-  // Head_06 skin crown is ~y=0.19; HeadAnchor is y=0.08 — match bowler cap lift (+0.12).
   g.position.set(0, 0.075, 0.005);
   g.rotation.x = 0.025;
 
-  // Profile: y=0 is the crown base (head contact). Brim below, dome above.
   const profile = [
     new THREE.Vector2(0.158, -0.012),
     new THREE.Vector2(0.158, -0.008),
@@ -91,109 +88,11 @@ function attachWideBrimHat(head: THREE.Object3D, color: string) {
   anchor.add(g);
 }
 
-function kitShellMat(color: string) {
-  return new THREE.MeshStandardMaterial({
-    color,
-    roughness: 0.78,
-    metalness: 0,
-    transparent: true,
-    opacity: 0.94,
-    depthWrite: false,
-  });
-}
-
-/** Coloured kit shells on bones — draws over Meshy white clothes without hiding face/hair. */
-function attachMeshyKitShells(
-  bones: GearBones,
-  kitColor: string,
-  trouserColor: string,
-) {
-  const shirtMat = kitShellMat(kitColor);
-  const trouserMat = kitShellMat(trouserColor);
-
-  const addShell = (
-    bone: THREE.Object3D | null,
-    name: string,
-    geo: THREE.BufferGeometry,
-    material: THREE.Material,
-    pos: { x: number; y: number; z: number },
-    rot?: { x?: number; y?: number; z?: number },
-  ) => {
-    if (!bone) return;
-    removeNamedFromTree(bone, name);
-    const mesh = new THREE.Mesh(geo, material);
-    mesh.name = name;
-    mesh.position.set(pos.x, pos.y, pos.z);
-    if (rot) mesh.rotation.set(rot.x ?? 0, rot.y ?? 0, rot.z ?? 0);
-    mesh.castShadow = false;
-    mesh.receiveShadow = false;
-    mesh.renderOrder = 5;
-    bone.add(mesh);
-  };
-
-  if (bones.torso) {
-    removeNamedFromTree(bones.torso, 'MeshyKitShirt');
-    const shirt = new THREE.Group();
-    shirt.name = 'MeshyKitShirt';
-    const chest = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.36, 6, 12), shirtMat);
-    chest.position.set(0, 0.05, 0.04);
-    chest.renderOrder = 5;
-    const sleeveL = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.18, 4, 8), shirtMat);
-    sleeveL.position.set(-0.26, 0.14, 0.03);
-    sleeveL.rotation.z = 0.45;
-    sleeveL.renderOrder = 5;
-    const sleeveR = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.18, 4, 8), shirtMat);
-    sleeveR.position.set(0.26, 0.14, 0.03);
-    sleeveR.rotation.z = -0.45;
-    sleeveR.renderOrder = 5;
-    shirt.add(chest, sleeveL, sleeveR);
-    bones.torso.add(shirt);
-  }
-
-  addShell(
-    bones.hips,
-    'MeshyKitTrousersHip',
-    new THREE.CapsuleGeometry(0.19, 0.08, 4, 8),
-    trouserMat,
-    { x: 0, y: -0.04, z: 0.03 },
-  );
-
-  addShell(
-    bones.legL,
-    'MeshyKitTrousersL',
-    new THREE.CapsuleGeometry(0.1, 0.34, 4, 8),
-    trouserMat,
-    { x: 0, y: -0.2, z: 0.02 },
-  );
-  addShell(
-    bones.legR,
-    'MeshyKitTrousersR',
-    new THREE.CapsuleGeometry(0.1, 0.34, 4, 8),
-    trouserMat,
-    { x: 0, y: -0.2, z: 0.02 },
-  );
-  addShell(
-    bones.lowerLegL,
-    'MeshyKitTrousersLL',
-    new THREE.CapsuleGeometry(0.085, 0.32, 4, 8),
-    trouserMat,
-    { x: 0, y: -0.18, z: 0.02 },
-  );
-  addShell(
-    bones.lowerLegR,
-    'MeshyKitTrousersLR',
-    new THREE.CapsuleGeometry(0.085, 0.32, 4, 8),
-    trouserMat,
-    { x: 0, y: -0.18, z: 0.02 },
-  );
-}
-
 interface GearOptions {
   minimalGear?: boolean;
   teamColor?: string;
-  trouserColor?: string;
   showCap?: boolean;
-  /** Meshy photoreal GLB — kit shells on bones; face/hair stay textured. */
+  /** Meshy GLB — kit is baked in texture; cap/gloves only. */
   meshyCharacter?: boolean;
 }
 
@@ -213,7 +112,6 @@ export function attachCricketGear(
 
   const minimal = options?.minimalGear ?? false;
   const kitColor = options?.teamColor ?? teamColor;
-  const trouserColor = options?.trouserColor ?? trouserColorFromKit(kitColor);
   const padMat = mat('#f0ebe0');
   const gloveMat = mat('#ffffff');
   const helmetMat = mat(kitColor);
@@ -227,10 +125,6 @@ export function attachCricketGear(
   if (showCap && !meshy) {
     if (role === 'umpire') hideUmpireScalp(root);
     else hideHair(root);
-  }
-
-  if (meshy) {
-    attachMeshyKitShells(bones, kitColor, trouserColor);
   }
 
   if (bones.head && showHelmet) {

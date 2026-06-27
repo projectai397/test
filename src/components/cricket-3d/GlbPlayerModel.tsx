@@ -20,8 +20,9 @@ import {
   isMixamoProfile,
   isStaticProfile,
   hasResolvedClip,
-  applyMeshyKitLook,
-  TEAM_KIT_RED,
+  prepareMeshyCharacterMaterials,
+  applyMeshyProportions,
+  applyMeshyNeutralStance,
   resolveClipName,
   resolveFirstClip,
   type ClipKey,
@@ -32,9 +33,8 @@ import {
 import { cloneAndNormalizeModel } from '../../utils/normalizeModel';
 import { attachCricketGear } from '../../utils/attachCricketGear';
 import { resolvePlayerBones } from '../../utils/resolvePlayerBones';
-import { trouserColorFromKit } from '../../utils/kitColors';
 import type { PlayerBones } from '../../utils/cricketProcedural';
-import { captureBoneRestPose, restoreBoneRestPose, type BoneRestMap } from '../../utils/boneRestPose';
+import { captureBoneRestPose, captureSkeletonRestPose, restoreBoneRestPose, type BoneRestMap } from '../../utils/boneRestPose';
 
 export interface GlbPlayerModelHandle {
   isReady: () => boolean;
@@ -125,6 +125,14 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
 
     const playIdle = () => {
       if (proceduralActive.current) return;
+
+      if (isMeshyBowlerUrl(config.url)) {
+        if (mixer) mixer.stopAllAction();
+        currentAction.current = null;
+        restoreBoneRestPose(bindRestRef.current);
+        return;
+      }
+
       let idleName: string | null;
       if (isCricketProfile(config)) {
         idleName = resolveFirstClip(actionsRef.current);
@@ -172,8 +180,9 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         if (role === 'umpire') applyUmpireKitLook(scene);
         else if (config.color) applyCricketKitLook(scene, config.color);
       } else if (isMeshyBowlerUrl(config.url)) {
-        const kit = config.color ?? TEAM_KIT_RED;
-        applyMeshyKitLook(scene, kit, config.trouserColor ?? trouserColorFromKit(kit));
+        prepareMeshyCharacterMaterials(scene);
+        applyMeshyProportions(scene);
+        applyMeshyNeutralStance(scene);
       }
 
       const resolved = resolvePlayerBones(scene, config.profile);
@@ -200,7 +209,6 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         attachCricketGear(scene, role, b, config.color, {
           minimalGear: config.minimalGear,
           teamColor: config.color,
-          trouserColor: config.trouserColor ?? (config.color ? trouserColorFromKit(config.color) : undefined),
           showCap: config.showCap,
           meshyCharacter: isMeshyBowlerUrl(config.url),
         });
@@ -231,7 +239,9 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         batObjectRef.current = bat;
       }
 
-      bindRestRef.current = captureBoneRestPose(getParts());
+      bindRestRef.current = isMeshyBowlerUrl(config.url)
+        ? captureSkeletonRestPose(scene)
+        : captureBoneRestPose(getParts());
       restPoseRef.current = bindRestRef.current;
       playIdle();
       readyRef.current = !!b.torso && !!b.armR;
@@ -375,3 +385,4 @@ useGLTF.preload('/models/cricket-player.glb');
 useGLTF.preload('/models/cricket-batsman.glb');
 useGLTF.preload('/models/cricket-keeper.glb');
 useGLTF.preload('/models/meshy-bowler.glb');
+useGLTF.preload('/models/meshy-bowler-dc2626-1a1a1a.glb');

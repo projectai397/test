@@ -1,0 +1,17 @@
+{
+  "sourceGlb": "C:\\Users\\dsmaj\\Downloads\\Meshy_AI_A_highly_detailed_pho_biped\\Meshy_AI_A_highly_detailed_pho_biped\\Meshy_AI_A_highly_detailed_pho_biped_Character_output.glb",
+  "kitColors": {
+    "shirt": "#dc2626",
+    "trousers": "#1a1a1a"
+  },
+  "kitHash": "dc2626-1a1a1a",
+  "outputUrl": "/models/meshy-bowler-dc2626-1a1a1a.glb",
+  "prompt": "realistic male cricket player, red short-sleeve cricket jersey, black cricket trousers, white athletic shoes, natural skin tone and hair, photorealistic sports kit, no logos",
+  "generatedAt": "2026-06-27T00:00:00.000Z",
+  "actions": {
+    "walking": -2,
+    "running": -1,
+    "idle": 0,
+    "baseballPitching": 393
+  }
+}

@@ -22,9 +22,10 @@ import { useCricketAnimationState } from '../../hooks/useCricketAnimationState';
 import { useCricketWebSocket } from '../../hooks/useCricketWebSocket';
 import { buildDefaultBallEvent } from '../../utils/defaultBallEvent';
 import { scenePositions, cameraDefaults } from '../../utils/animationTimings';
-import { MODEL_PATHS } from '../../utils/playerModels';
+import { MODEL_PATHS, isMeshyBowlerUrl } from '../../utils/playerModels';
 import { resolveFieldPosition } from '../../utils/fieldPositions';
 import { resolveKitColor, resolveTrouserColor } from '../../utils/kitColors';
+import { resolveMeshyBowlerUrl } from '../../utils/resolveMeshyBowlerUrl';
 import { auditExpectedModels, getModelInstallMessage, logModelAudit } from '../../utils/modelAudit';
 import { loadMatchConfig } from '../../config/loadMatchConfig';
 import type { CricketBallEvent } from '../../types/cricket-ball-event';
@@ -87,6 +88,13 @@ function CricketScene({
   const nonStrikerTrousers = resolveTrouserColor(teamB.kitColor, teamB.trouserColor, teamB.nonStriker.kitColor);
   const teamATrousers = resolveTrouserColor(teamA.kitColor, teamA.trouserColor);
 
+  const bowlerModelUrl = (() => {
+    const configured = teamA.bowler.modelUrl;
+    if (configured && !isMeshyBowlerUrl(configured)) return configured;
+    if (configured && isMeshyBowlerUrl(configured)) return resolveMeshyBowlerUrl(teamA);
+    return resolveMeshyBowlerUrl(teamA);
+  })();
+
   return (
     <>
       <color attach="background" args={['#87a8c4']} />
@@ -122,7 +130,7 @@ function CricketScene({
         jerseyColor={bowlerKit}
         trouserColor={bowlerTrousers}
         showCap={teamA.bowler.showCap}
-        modelUrl={teamA.bowler.modelUrl ?? modelUrl}
+        modelUrl={bowlerModelUrl}
       />
       <BatterController
         ref={batterRef}

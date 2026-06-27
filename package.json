@@ -14,6 +14,8 @@
     "meshy:balance": "node scripts/meshy-api.mjs balance",
     "meshy:search": "node scripts/meshy-api.mjs search",
     "meshy:build-bowler": "node scripts/meshy-api.mjs build-bowler",
+    "meshy:retexture": "node scripts/meshy-api.mjs retexture",
+    "meshy:kit-bowler": "node scripts/meshy-api.mjs kit-bowler",
     "install:umpire": "node scripts/install-umpire.mjs",
     "validate:models": "node scripts/validate-models.mjs"
   },

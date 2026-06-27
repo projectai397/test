@@ -205,7 +205,60 @@ export function resolveFirstClip(
 /** Material names that are clothing only — never skin, hair, face, or body. */
 const KIT_MATERIAL = /^Wolf3D_Outfit_(Top|Bottom|Footwear)$/i;
 
-/** Keep Meshy photoreal albedo — do not strip emissive (model needs it to render). */
+/** Slim oversized Meshy shoulder geometry toward natural human proportions. */
+export function applyMeshyProportions(root: THREE.Object3D): void {
+  const scaleBone = (fragment: string, scale: THREE.Vector3) => {
+    const bone = findBone(root, fragment);
+    if (!bone) return;
+    bone.scale.multiply(scale);
+    bone.updateMatrixWorld(true);
+  };
+
+  const narrow = new THREE.Vector3(0.74, 0.9, 0.74);
+  const arm = new THREE.Vector3(0.86, 0.94, 0.86);
+  const upperChest = new THREE.Vector3(0.9, 1, 0.9);
+
+  scaleBone('LeftShoulder', narrow);
+  scaleBone('RightShoulder', narrow);
+  scaleBone('LeftArm', arm);
+  scaleBone('RightArm', arm);
+  scaleBone('Spine02', upperChest);
+  scaleBone('Spine01', new THREE.Vector3(0.94, 1, 0.94));
+
+  root.traverse((obj) => {
+    if (!(obj instanceof THREE.SkinnedMesh)) return;
+    obj.skeleton.bones.forEach((bone) => bone.updateMatrixWorld(true));
+    obj.skeleton.update();
+  });
+}
+
+/** Drop A-pose arms to a natural relaxed side stance (Meshy bind pose is arms-out). */
+export function applyMeshyNeutralStance(root: THREE.Object3D): void {
+  const rotateBone = (fragment: string, x: number, y: number, z: number) => {
+    const bone = findBone(root, fragment);
+    if (!bone) return;
+    bone.rotation.x += x;
+    bone.rotation.y += y;
+    bone.rotation.z += z;
+    bone.updateMatrixWorld(true);
+  };
+
+  // Meshy/Mixamo A-pose → arms hanging at sides
+  rotateBone('LeftShoulder', 0, 0, 0.12);
+  rotateBone('RightShoulder', 0, 0, -0.12);
+  rotateBone('LeftArm', 0.06, 0, 0.92);
+  rotateBone('RightArm', 0.06, 0, -0.92);
+  rotateBone('LeftForeArm', 0, 0.18, 0);
+  rotateBone('RightForeArm', 0, -0.18, 0);
+
+  root.traverse((obj) => {
+    if (!(obj instanceof THREE.SkinnedMesh)) return;
+    obj.skeleton.bones.forEach((bone) => bone.updateMatrixWorld(true));
+    obj.skeleton.update();
+  });
+}
+
+/** Keep Meshy photoreal albedo — kit colour is baked in GLB texture via meshy:kit-bowler. */
 export function prepareMeshyCharacterMaterials(root: THREE.Object3D): void {
   root.traverse((child) => {
     if (!(child instanceof THREE.SkinnedMesh)) return;
@@ -225,15 +278,6 @@ export function prepareMeshyCharacterMaterials(root: THREE.Object3D): void {
       child.material = Array.isArray(child.material) ? nextMats : nextMats[0]!;
     }
   });
-}
-
-/** Prep Meshy materials; kit colour is applied via bone-attached shells in attachCricketGear. */
-export function applyMeshyKitLook(
-  root: THREE.Object3D,
-  _teamColor?: string,
-  _trouserColor?: string,
-) {
-  prepareMeshyCharacterMaterials(root);
 }
 
 export function applyCricketKitLook(root: THREE.Object3D, teamColor?: string) {

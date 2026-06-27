@@ -16,5 +16,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "config.json"]
+  "include": ["src", "config.json", "public/models/meshy-kit-manifest.json"]
 }
