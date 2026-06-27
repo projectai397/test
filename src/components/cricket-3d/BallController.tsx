@@ -9,6 +9,7 @@ import {
   getHandReleaseForward,
   speedKmhToMs,
 } from '../../utils/ballPhysics';
+import { BALL_FLIGHT_START_DELAY_SEC } from '../../utils/bowlingMotionConfig';
 import { scenePositions } from '../../utils/animationTimings';
 
 export interface BallControllerHandle {
@@ -21,15 +22,61 @@ export interface BallControllerHandle {
   reset: () => void;
 }
 
-type BallMode = 'hidden' | 'attached' | 'dynamic';
+type BallMode = 'hidden' | 'attached' | 'heldAtRelease' | 'dynamic';
 
 export const BallController = forwardRef<BallControllerHandle>(function BallController(_, ref) {
   const bodyRef = useRef<RapierRigidBody>(null);
   const handRef = useRef<THREE.Object3D | null>(null);
   const modeRef = useRef<BallMode>('hidden');
+  const flightDelayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [ballVisible, setBallVisible] = useState(false);
   const worldPos = useRef(new THREE.Vector3());
   const waitResolveRef = useRef<(() => void) | null>(null);
+
+  const clearFlightDelay = () => {
+    if (flightDelayTimerRef.current !== null) {
+      clearTimeout(flightDelayTimerRef.current);
+      flightDelayTimerRef.current = null;
+    }
+  };
+
+  const launchBall = (vel: { x: number; y: number; z: number }, speedKmh: number) => {
+    const body = bodyRef.current;
+    if (!body) return;
+
+    handRef.current = null;
+    modeRef.current = 'dynamic';
+    body.setBodyType(0, true);
+    body.setLinvel(vel, true);
+    body.setAngvel({ x: speedKmhToMs(speedKmh) * 8, y: 2, z: 1.5 }, true);
+  };
+
+  const scheduleFlight = (
+    vel: { x: number; y: number; z: number },
+    speedKmh: number,
+  ) => {
+    clearFlightDelay();
+    setBallVisible(true);
+
+    const delayMs = Math.max(0, BALL_FLIGHT_START_DELAY_SEC * 1000);
+    if (delayMs <= 0) {
+      launchBall(vel, speedKmh);
+      return;
+    }
+
+    modeRef.current = 'heldAtRelease';
+    const body = bodyRef.current;
+    if (body) {
+      body.setBodyType(2, true);
+      body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    }
+
+    flightDelayTimerRef.current = setTimeout(() => {
+      flightDelayTimerRef.current = null;
+      launchBall(vel, speedKmh);
+    }, delayMs);
+  };
 
   useFrame(() => {
     const body = bodyRef.current;
@@ -76,11 +123,6 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
       const body = bodyRef.current;
       if (!body) return;
 
-      handRef.current = null;
-      modeRef.current = 'dynamic';
-      setBallVisible(true);
-      body.setBodyType(0, true);
-
       const pos = body.translation();
       const vel = computeReleaseVelocity({
         speedKmh,
@@ -88,18 +130,12 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
         releaseWorldPos: { x: pos.x, y: pos.y, z: pos.z },
       });
 
-      body.setLinvel(vel, true);
-      body.setAngvel({ x: speedKmhToMs(speedKmh) * 8, y: 2, z: 1.5 }, true);
+      scheduleFlight(vel, speedKmh);
     },
 
     releaseFromHand: (hand, speedKmh, lineOffsetZ) => {
       const body = bodyRef.current;
       if (!body) return;
-
-      handRef.current = null;
-      modeRef.current = 'dynamic';
-      setBallVisible(true);
-      body.setBodyType(0, true);
 
       hand.updateWorldMatrix(true, false);
       hand.getWorldPosition(worldPos.current);
@@ -121,8 +157,7 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
         handForward: { x: forward.x, y: forward.y, z: forward.z },
       });
 
-      body.setLinvel(vel, true);
-      body.setAngvel({ x: speedKmhToMs(speedKmh) * 8, y: 2, z: 1.5 }, true);
+      scheduleFlight(vel, speedKmh);
     },
 
     applySixHit: () => {
@@ -144,6 +179,7 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
     waitFlight: (durationMs) => new Promise((r) => setTimeout(r, durationMs)),
 
     reset: () => {
+      clearFlightDelay();
       handRef.current = null;
       modeRef.current = 'hidden';
       setBallVisible(false);

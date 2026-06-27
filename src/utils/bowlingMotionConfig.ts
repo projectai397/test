@@ -18,3 +18,6 @@ export const MESHY_BOWL_RELEASE_FRACTION = 0.14;
 
 /** No fade-in on delivery — avoids delaying visible motion. */
 export const MESHY_BOWL_FADE_SEC = 0;
+
+/** Pause at the release point before the ball flies toward the batsman (seconds). */
+export const BALL_FLIGHT_START_DELAY_SEC = 0.50;
