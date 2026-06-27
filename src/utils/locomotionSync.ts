@@ -12,8 +12,13 @@ export const CLIP_LOCOMOTION = {
   walk: { cycleDuration: 1.033, effectiveStride: 1.15 },
   /** Cricketer Walk (IDEAZZZZ) — 2-step scanned walk, sped up for bowler run-up. */
   cricketWalkRunUp: { cycleDuration: 1.0, effectiveStride: 1.35, clipTimeScale: 1.45 },
-  /** Procedural Wolf3D side-on jog — ~2.7 m/s, not sprint. */
-  cricketBowlerRunUp: { cycleDuration: 0.55, effectiveStride: 1.5, groundSpeed: 2.7 },
+  /** Procedural Wolf3D side-on jog — accelerates toward crease. */
+  cricketBowlerRunUp: {
+    startSpeed: 2.4,
+    peakSpeed: 5.2,
+    strideLength: 1.45,
+    stridePeriod: 0.48,
+  },
 } as const;
 
 /** Play the run clip at native speed — avoids fast-leg / slow-body mismatch. */
@@ -75,18 +80,18 @@ export function syncCricketWalkRunUp(distanceM: number): LocomotionSync {
   };
 }
 
-/** Side-on cricket jog for Wolf3D procedural run-up (~2.7 m/s). */
+/** Side-on cricket jog for Wolf3D procedural run-up (accelerating ~2.4→5.2 m/s). */
 export function syncCricketBowlerRunUp(distanceM: number): LocomotionSync {
-  const { cycleDuration, effectiveStride, groundSpeed } = CLIP_LOCOMOTION.cricketBowlerRunUp;
-  const duration = distanceM / groundSpeed;
-  const cycles = distanceM / effectiveStride;
-  const stepPeriod = cycleDuration;
+  const { startSpeed, peakSpeed, strideLength, stridePeriod } = CLIP_LOCOMOTION.cricketBowlerRunUp;
+  const avgSpeed = (startSpeed + peakSpeed) / 2;
+  const duration = distanceM / avgSpeed;
+  const cycles = distanceM / strideLength;
 
   return {
     duration,
     clipTimeScale: 1,
-    yBob: { amplitude: 0.025, period: stepPeriod },
+    yBob: { amplitude: 0.028, period: stridePeriod },
     cycles,
-    groundSpeed,
+    groundSpeed: avgSpeed,
   };
 }

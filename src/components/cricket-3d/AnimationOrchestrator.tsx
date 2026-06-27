@@ -137,7 +137,7 @@ async function runDeliveryPipeline(event: CricketBallEvent, refs: SceneRefs): Pr
       } else {
         ball.releaseWithPhysics(event.delivery.speed, deliveryParams.lineOffsetZ);
       }
-    });
+    }, event.delivery.speed);
 
     setAnimationState('ball_released');
     refs.nonStrikerRef.current?.playWatchBall();

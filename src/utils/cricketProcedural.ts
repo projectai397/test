@@ -1,6 +1,7 @@
 import gsap from 'gsap';
 import type * as THREE from 'three';
 import { scenePositions } from './animationTimings';
+import { PITCH_FACING } from './playerFacing';
 import type { BoneRestMap } from './boneRestPose';
 import {
   BOWLING_PHASES,
@@ -132,8 +133,17 @@ export function applyCricketRunUpPose(bones: PlayerBones, rest: BoneRestMap): vo
   applyPose(bones, rest, CRICKET_RUNUP_HOLD);
 }
 
-/** Seconds into buildBowlingTimeline when the ball leaves the hand. */
+/** Seconds into buildBowlingTimeline when the ball leaves the hand (132 km/h baseline). */
 export const BOWLING_RELEASE_TIME = 0.48;
+
+export interface BowlingTimelineOptions {
+  deliverySpeedKmh?: number;
+}
+
+function bowlingPaceScale(speedKmh: number): number {
+  const clamped = Math.max(90, Math.min(160, speedKmh));
+  return 132 / clamped;
+}
 
 /** Side-on cricket jog — locked upper body, thigh + shin strides. */
 export function buildCricketRunUpTimeline(
@@ -168,21 +178,36 @@ export function buildBowlingTimeline(
   rest: BoneRestMap,
   group: THREE.Object3D,
   onRelease?: () => void,
+  options?: BowlingTimelineOptions,
 ): gsap.core.Timeline {
+  const speed = options?.deliverySpeedKmh ?? 132;
+  const scale = bowlingPaceScale(speed);
+  const d = (t: number) => t * scale;
+
   const tl = gsap.timeline();
   const p = BOWLING_PHASES;
 
-  tweenPose(tl, bones, rest, p.gather, 0.12, 0, 'power2.out');
-  tweenPose(tl, bones, rest, p.bound, 0.14, 0.12, 'power2.out', true);
-  tweenPose(tl, bones, rest, p.plant, 0.14, 0.26, 'power3.in', true);
-  tweenPose(tl, bones, rest, p.release, 0.12, 0.4, 'power4.in', true);
-  tl.call(() => onRelease?.(), undefined, BOWLING_RELEASE_TIME);
-  tweenPose(tl, bones, rest, p.followThrough, 0.38, 0.52, 'power2.out', true);
+  tweenPose(tl, bones, rest, p.gather, d(0.12), 0, 'power2.out');
+  tweenPose(tl, bones, rest, p.bound, d(0.14), d(0.12), 'power2.out', true);
+  tweenPose(tl, bones, rest, p.plant, d(0.14), d(0.26), 'power3.in', true);
+  tweenPose(tl, bones, rest, p.release, d(0.12), d(0.4), 'power4.in', true);
+  tl.call(() => onRelease?.(), undefined, d(BOWLING_RELEASE_TIME));
+  tweenPose(tl, bones, rest, p.followThrough, d(0.38), d(0.52), 'power2.out', true);
 
   tl.to(
     group.position,
-    { x: scenePositions.bowlerCreaseX - 2.5, duration: 0.65, ease: 'power1.out' },
-    0.25,
+    { x: scenePositions.bowlerCreaseX - 2.5, duration: d(0.65), ease: 'power1.out' },
+    d(0.25),
+  );
+
+  tl.to(
+    group.rotation,
+    {
+      y: PITCH_FACING.bowlerDeliveryFrontOn,
+      duration: d(0.22),
+      ease: 'power2.inOut',
+    },
+    d(0.26),
   );
 
   return tl;

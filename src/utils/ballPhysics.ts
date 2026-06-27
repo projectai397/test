@@ -53,6 +53,7 @@ export function computeReleaseVelocity(params: ReleaseParams): {
     dirX = hx * 0.7 + tx * 0.3;
     dirY = hy * 0.7 + ty * 0.3 - 0.12;
     dirZ = hz * 0.7 + tz * 0.3;
+    dirX = dirX * 0.85 - 0.15;
     const dLen = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ) || 1;
     dirX /= dLen;
     dirY /= dLen;
