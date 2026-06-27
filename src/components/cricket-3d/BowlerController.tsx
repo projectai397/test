@@ -12,7 +12,7 @@ import {
   timelineUntil,
 } from '../../utils/cricketProcedural';
 import { scenePositions, animationTimings } from '../../utils/animationTimings';
-import { PITCH_FACING } from '../../utils/playerFacing';
+import { bowlerFacingTowardStriker } from '../../utils/playerFacing';
 import type { BoneRestMap } from '../../utils/boneRestPose';
 import {
   getBowlerRunUpDistance,
@@ -46,9 +46,9 @@ interface BowlerControllerProps {
   modelUrl?: string;
 }
 
-function setBowlerHome(group: THREE.Group) {
+function setBowlerHome(group: THREE.Group, modelUrl?: string) {
   group.position.set(scenePositions.bowlerStartX, 0, scenePositions.bowlerStartZ);
-  group.rotation.set(0, PITCH_FACING.bowlerRunUpSideOn, 0);
+  group.rotation.set(0, bowlerFacingTowardStriker(modelUrl), 0);
 }
 
 export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControllerProps>(
@@ -61,8 +61,8 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
     const usesClipRunUpRef = useRef(false);
 
     useLayoutEffect(() => {
-      if (groupRef.current) setBowlerHome(groupRef.current);
-    }, []);
+      if (groupRef.current) setBowlerHome(groupRef.current, modelUrl);
+    }, [modelUrl]);
 
     useImperativeHandle(ref, () => ({
       isReady: () =>
@@ -88,7 +88,8 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
         player.endProcedural();
         bindRestRef.current = null;
         usesClipRunUpRef.current = false;
-        setBowlerHome(group);
+        setBowlerHome(group, modelUrl);
+        const runFacing = bowlerFacingTowardStriker(modelUrl);
 
         const distance = getBowlerRunUpDistance();
         let moveDuration: number = animationTimings.runUp;
@@ -104,6 +105,7 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
             moveDuration,
             { ease: 'power2InOut', yBob: sync.yBob },
           );
+          group.rotation.set(0, runFacing, 0);
           player.stopClips();
         } else if (player.hasClip('walk')) {
           usesClipRunUpRef.current = true;
@@ -116,6 +118,7 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
             moveDuration,
             { ease: 'power2InOut', yBob: sync.yBob },
           );
+          group.rotation.set(0, runFacing, 0);
           player.stopClips();
         } else {
           const sync = syncCricketBowlerRunUp(distance);
@@ -128,6 +131,9 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
             bindRest,
             group,
             moveDuration,
+            undefined,
+            undefined,
+            modelUrl,
           );
           timelineRef.current = timeline;
           runUpEndTimeRef.current = runUpEndTime;
@@ -159,21 +165,15 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
           player.endProcedural();
           player.stopClips();
 
-          const clipDuration = player.getClipDuration('bowl') ?? 4;
+          group.position.set(scenePositions.bowlerCreaseX, 0, 0);
+          group.rotation.set(0, bowlerFacingTowardStriker(modelUrl), 0);
+
           const pace = Math.max(0.85, Math.min(1.2, (deliverySpeedKmh ?? 132) / 132));
-          const animDuration = clipDuration / pace;
-          const movePromise = animatePosition(
-            group,
-            { x: scenePositions.bowlerCreaseX - 1.4, z: 0, y: 0 },
-            animDuration * 0.88,
-            { ease: 'power1.out' },
-          );
-          const animPromise = player.playClipOnce('bowl', {
+          await player.playClipOnce('bowl', {
             onRelease,
             releaseFraction: 0.38,
             timeScale: pace,
           });
-          await Promise.all([movePromise, animPromise]);
           usesClipRunUpRef.current = false;
           const durationMs = performance.now() - start;
           return { ok: durationMs >= MIN_BOWL_MS, durationMs };
@@ -198,6 +198,7 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
           const tl = buildBowlingTimeline(player.getParts(), bindRest, group, onRelease, {
             deliverySpeedKmh,
             skipGather: false,
+            modelUrl,
           });
           timelineRef.current = tl;
           tl.play();
@@ -219,7 +220,7 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
         usesClipRunUpRef.current = false;
         if (groupRef.current) {
           cancelMotionsFor(groupRef.current);
-          setBowlerHome(groupRef.current);
+          setBowlerHome(groupRef.current, modelUrl);
         }
         playerRef.current?.resetPose();
       },

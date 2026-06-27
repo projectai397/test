@@ -27,6 +27,13 @@
       "trousers": "#1a1a1a",
       "modelUrl": "/models/meshy-bowler-eab308-1a1a1a.glb",
       "generatedAt": "2026-06-27T07:41:21.167Z"
+    },
+    {
+      "kitHash": "f97316-1a1a1a",
+      "shirt": "#f97316",
+      "trousers": "#1a1a1a",
+      "modelUrl": "/models/meshy-bowler-f97316-1a1a1a.glb",
+      "generatedAt": "2026-06-27T07:45:34.134Z"
     }
   ],
   "defaultBowlerUrl": "/models/meshy-bowler-dc2626-1a1a1a.glb"

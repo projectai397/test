@@ -1,7 +1,7 @@
 import gsap from 'gsap';
 import type * as THREE from 'three';
 import { scenePositions } from './animationTimings';
-import { PITCH_FACING } from './playerFacing';
+import { bowlerFacingTowardStriker, PITCH_FACING } from './playerFacing';
 import type { BoneRestMap } from './boneRestPose';
 import {
   BOWLING_PHASES,
@@ -148,11 +148,10 @@ function bowlingPaceScale(speedKmh: number): number {
 }
 
 /** Partial chest turn at release — stay mostly side-on, not a full 90° snap. */
-function bowlerReleaseFacing(): number {
-  return (
-    PITCH_FACING.bowlerRunUpSideOn +
-    (PITCH_FACING.bowlerDeliveryFrontOn - PITCH_FACING.bowlerRunUpSideOn) * 0.55
-  );
+function bowlerReleaseFacing(modelUrl?: string): number {
+  const runUp = bowlerFacingTowardStriker(modelUrl);
+  const frontOn = PITCH_FACING.bowlerDeliveryFrontOn;
+  return runUp + (frontOn - runUp) * 0.55;
 }
 
 /** Side-on cricket jog — locked upper body, thigh + shin strides. Ends in gather pose. */
@@ -200,7 +199,7 @@ export function buildBowlingTimeline(
   rest: BoneRestMap,
   group: THREE.Object3D,
   onRelease?: () => void,
-  options?: BowlingTimelineOptions,
+  options?: BowlingTimelineOptions & { modelUrl?: string },
 ): gsap.core.Timeline {
   const speed = options?.deliverySpeedKmh ?? 132;
   const scale = bowlingPaceScale(speed);
@@ -228,20 +227,14 @@ export function buildBowlingTimeline(
   tl.to(group.position, { y: 0, duration: d(0.09), ease: 'power2.in' }, jumpStart + d(0.06));
 
   tl.to(
-    group.position,
-    { x: scenePositions.bowlerCreaseX - 1.6, duration: d(0.48), ease: 'power1.out' },
-    t0 + d(0.1),
-  );
-
-  tl.to(
     group.rotation,
-    { y: bowlerReleaseFacing(), duration: d(0.16), ease: 'power2.inOut' },
+    { y: bowlerReleaseFacing(options?.modelUrl), duration: d(0.16), ease: 'power2.inOut' },
     t0 + d(0.18),
   );
 
   tl.to(
     group.rotation,
-    { y: PITCH_FACING.bowlerRunUpSideOn, duration: d(0.22), ease: 'power2.inOut' },
+    { y: bowlerFacingTowardStriker(options?.modelUrl), duration: d(0.22), ease: 'power2.inOut' },
     t0 + d(0.58),
   );
 
@@ -261,13 +254,15 @@ export function buildUnifiedBowlerTimeline(
   runUpDuration: number,
   onRelease?: () => void,
   options?: BowlingTimelineOptions,
+  modelUrl?: string,
 ): UnifiedBowlerTimeline {
   const tl = gsap.timeline();
   const startX = scenePositions.bowlerStartX;
   const creaseX = scenePositions.bowlerCreaseX;
+  const runFacing = bowlerFacingTowardStriker(modelUrl);
 
   group.position.set(startX, 0, scenePositions.bowlerStartZ);
-  group.rotation.set(0, PITCH_FACING.bowlerRunUpSideOn, 0);
+  group.rotation.set(0, runFacing, 0);
 
   tl.to(
     group.position,
@@ -283,6 +278,7 @@ export function buildUnifiedBowlerTimeline(
   const delivery = buildBowlingTimeline(bones, bindRest, group, onRelease, {
     ...options,
     skipGather: true,
+    modelUrl,
   });
   tl.add(delivery, runUpDuration);
 

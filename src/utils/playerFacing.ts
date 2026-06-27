@@ -36,14 +36,23 @@ export const sideOnOffSide = 0 + MODEL_FACING_OFFSET;
 /** RHB over-the-wicket run-up: chest to off side (+Z), run direction −X. */
 export const bowlerRunUpSideOn = sideOnOffSide;
 
+/** Run toward the striker end while facing down the pitch. */
+export const bowlerRunUpTowardBatsman = towardStriker;
+
 /** At delivery release: chest toward the striker end. */
 export const bowlerDeliveryFrontOn = towardStriker;
+
+/** Y rotation for the bowler group — faces the batsman end. */
+export function bowlerFacingTowardStriker(_modelUrl?: string): number {
+  return towardStriker;
+}
 
 export const PITCH_FACING = {
   towardStriker,
   towardBowler,
   sideOnOffSide,
   bowlerRunUpSideOn,
+  bowlerRunUpTowardBatsman,
   bowlerDeliveryFrontOn,
   /** Main umpire at bowler's end — faces down the pitch toward the striker. */
   bowlersEndUmpire: towardStriker,

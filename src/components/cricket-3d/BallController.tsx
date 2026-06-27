@@ -10,7 +10,6 @@ import {
   speedKmhToMs,
 } from '../../utils/ballPhysics';
 import { scenePositions } from '../../utils/animationTimings';
-import { BallFlightTrail } from './BallFlightTrail';
 
 export interface BallControllerHandle {
   attachToHand: (hand: THREE.Object3D) => void;
@@ -29,7 +28,6 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
   const handRef = useRef<THREE.Object3D | null>(null);
   const modeRef = useRef<BallMode>('hidden');
   const [ballVisible, setBallVisible] = useState(false);
-  const [trailActive, setTrailActive] = useState(false);
   const worldPos = useRef(new THREE.Vector3());
   const waitResolveRef = useRef<(() => void) | null>(null);
 
@@ -60,7 +58,6 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
     attachToHand: (hand) => {
       handRef.current = hand;
       modeRef.current = 'attached';
-      setTrailActive(false);
       setBallVisible(true);
       const body = bodyRef.current;
       if (!body) return;
@@ -81,7 +78,7 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
 
       handRef.current = null;
       modeRef.current = 'dynamic';
-      setTrailActive(true);
+      setBallVisible(true);
       body.setBodyType(0, true);
 
       const pos = body.translation();
@@ -101,7 +98,7 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
 
       handRef.current = null;
       modeRef.current = 'dynamic';
-      setTrailActive(true);
+      setBallVisible(true);
       body.setBodyType(0, true);
 
       hand.updateWorldMatrix(true, false);
@@ -149,7 +146,6 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
     reset: () => {
       handRef.current = null;
       modeRef.current = 'hidden';
-      setTrailActive(false);
       setBallVisible(false);
       waitResolveRef.current = null;
       const body = bodyRef.current;
@@ -175,12 +171,10 @@ export const BallController = forwardRef<BallControllerHandle>(function BallCont
       ccd
       position={[0, -10, 0]}
     >
-      <BallFlightTrail active={trailActive}>
-        <mesh castShadow visible={ballVisible}>
-          <sphereGeometry args={[BALL_RADIUS * 1.15, 24, 24]} />
-          <meshStandardMaterial color="#cc2200" roughness={0.35} metalness={0.15} />
-        </mesh>
-      </BallFlightTrail>
+      <mesh castShadow visible={ballVisible}>
+        <sphereGeometry args={[BALL_RADIUS * 1.15, 24, 24]} />
+        <meshStandardMaterial color="#cc2200" roughness={0.35} metalness={0.15} />
+      </mesh>
     </RigidBody>
   );
 });
