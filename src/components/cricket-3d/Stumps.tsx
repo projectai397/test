@@ -54,16 +54,16 @@ export const Stumps = forwardRef<StumpsHandle, StumpsProps>(function Stumps(
       {stumpPositions.map((pos, i) => (
         <mesh key={i} position={pos} castShadow>
           <cylinderGeometry args={[0.018, 0.022, 0.71, 8]} />
-          <meshStandardMaterial color="#d4c4a0" roughness={0.6} />
+          <meshStandardMaterial color="#c8860a" roughness={0.55} />
         </mesh>
       ))}
       <mesh ref={bail1Ref} position={[-0.06, 0.71, 0]} castShadow>
         <cylinderGeometry args={[0.008, 0.008, 0.11, 6]} />
-        <meshStandardMaterial color="#8b0000" />
+        <meshStandardMaterial color="#f0ead6" roughness={0.5} />
       </mesh>
       <mesh ref={bail2Ref} position={[0.06, 0.71, 0]} castShadow>
         <cylinderGeometry args={[0.008, 0.008, 0.11, 6]} />
-        <meshStandardMaterial color="#8b0000" />
+        <meshStandardMaterial color="#f0ead6" roughness={0.5} />
       </mesh>
     </group>
   );

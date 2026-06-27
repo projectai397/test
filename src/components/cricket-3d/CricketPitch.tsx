@@ -1,68 +1,64 @@
 import { useMemo } from 'react';
-import * as THREE from 'three';
 import { scenePositions } from '../../utils/animationTimings';
+import {
+  createPitchTexture,
+  POPPING_CREASE_M,
+} from '../../utils/cricketPitchSurface';
+
+function PoppingCreaseExtensions() {
+  const { pitchLength, pitchWidth } = scenePositions;
+  const halfW = pitchWidth / 2;
+  const extension = 2.4;
+  const y = 0.011;
+  const lineW = 0.06;
+
+  const ends = [
+    { x: POPPING_CREASE_M, zSign: 1 },
+    { x: POPPING_CREASE_M, zSign: -1 },
+    { x: pitchLength - POPPING_CREASE_M, zSign: 1 },
+    { x: pitchLength - POPPING_CREASE_M, zSign: -1 },
+  ];
+
+  return (
+    <>
+      {ends.map(({ x, zSign }, i) => (
+        <mesh
+          key={i}
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[x, y, zSign * (halfW + extension / 2)]}
+        >
+          <planeGeometry args={[lineW, extension]} />
+          <meshBasicMaterial color="#ffffff" />
+        </mesh>
+      ))}
+    </>
+  );
+}
 
 export function CricketPitch() {
-  const pitchTexture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#c4a574';
-    ctx.fillRect(0, 0, 256, 512);
-    for (let i = 0; i < 3000; i++) {
-      ctx.fillStyle = `rgba(120,90,50,${Math.random() * 0.15})`;
-      ctx.fillRect(Math.random() * 256, Math.random() * 512, 1, 3);
-    }
-    const tex = new THREE.CanvasTexture(canvas);
-    return tex;
-  }, []);
-
   const { pitchLength, pitchWidth } = scenePositions;
   const centerX = pitchLength / 2;
+
+  const pitchTexture = useMemo(
+    () => createPitchTexture(pitchLength, pitchWidth),
+    [pitchLength, pitchWidth],
+  );
 
   return (
     <group>
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[centerX, 0.01, 0]}
+        position={[centerX, 0.012, 0]}
         receiveShadow
       >
         <planeGeometry args={[pitchLength, pitchWidth]} />
-        <meshStandardMaterial map={pitchTexture} roughness={0.85} />
+        <meshStandardMaterial
+          map={pitchTexture}
+          roughness={0.92}
+          metalness={0}
+        />
       </mesh>
-
-      {/* Crease lines - striker end */}
-      <CreaseLine x={0.3} z={pitchWidth / 2 - 0.05} length={pitchWidth} />
-      <CreaseLine x={1.22} z={0} length={pitchWidth} />
-      <CreaseLine x={0} z={0} length={pitchWidth} vertical />
-
-      {/* Crease lines - bowler end */}
-      <CreaseLine x={pitchLength - 0.3} z={pitchWidth / 2 - 0.05} length={pitchWidth} />
-      <CreaseLine x={pitchLength - 1.22} z={0} length={pitchWidth} />
-      <CreaseLine x={pitchLength} z={0} length={pitchWidth} vertical />
+      <PoppingCreaseExtensions />
     </group>
-  );
-}
-
-function CreaseLine({
-  x,
-  z,
-  length,
-  vertical = false,
-}: {
-  x: number;
-  z: number;
-  length: number;
-  vertical?: boolean;
-}) {
-  return (
-    <mesh
-      rotation={[-Math.PI / 2, 0, vertical ? Math.PI / 2 : 0]}
-      position={[x, 0.015, z]}
-    >
-      <planeGeometry args={[vertical ? 0.05 : length, vertical ? length : 0.05]} />
-      <meshBasicMaterial color="#ffffff" />
-    </mesh>
   );
 }

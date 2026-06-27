@@ -20,6 +20,7 @@ import {
   syncCricketWalkRunUp,
   syncRunLocomotion,
 } from '../../utils/locomotionSync';
+import { MESHY_BOWL_FADE_SEC, MESHY_BOWL_RELEASE_CLIP_SEC, MESHY_BOWL_RELEASE_FRACTION } from '../../utils/bowlingMotionConfig';
 import { animatePosition, cancelMotionsFor, waitUntilReady } from '../../utils/motionRunner';
 
 export interface AnimationCompletion {
@@ -175,7 +176,9 @@ export const BowlerController = forwardRef<BowlerControllerHandle, BowlerControl
           try {
             await player.playClipOnce('bowl', {
               onRelease,
-              releaseFraction: 0.38,
+              fade: MESHY_BOWL_FADE_SEC,
+              releaseClipSec: MESHY_BOWL_RELEASE_CLIP_SEC,
+              releaseFraction: MESHY_BOWL_RELEASE_FRACTION,
               timeScale: pace,
             });
           } finally {

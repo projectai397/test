@@ -55,6 +55,8 @@ export interface GlbPlayerModelHandle {
       timeScale?: number;
       onRelease?: () => void;
       releaseFraction?: number;
+      /** Prefer absolute clip time (seconds) over releaseFraction when set. */
+      releaseClipSec?: number;
     },
   ) => Promise<number>;
   stopClips: () => void;
@@ -101,6 +103,11 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
     const bindRestRef = useRef<BoneRestMap>(new Map());
     const restPoseRef = useRef<BoneRestMap>(new Map());
     const deliveryRotationOffsetRef = useRef(0);
+    const pendingReleaseRef = useRef<{
+      action: THREE.AnimationAction;
+      atClipSec: number;
+      cb: () => void;
+    } | null>(null);
 
     const applyModelRotation = () => {
       if (!groupRef.current) return;
@@ -269,6 +276,12 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         }
       } else if (mixer) {
         mixer.update(delta);
+        const pending = pendingReleaseRef.current;
+        const action = currentAction.current;
+        if (pending && action === pending.action && action.time >= pending.atClipSec) {
+          pendingReleaseRef.current = null;
+          pending.cb();
+        }
       }
     });
 
@@ -307,13 +320,20 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         currentAction.current = next;
       },
       playClipOnce: (key, options = {}) => {
-        const { fade = 0.2, timeScale = 1, onRelease, releaseFraction = 0.38 } = options;
+        const {
+          fade = 0.2,
+          timeScale = 1,
+          onRelease,
+          releaseFraction = 0.38,
+          releaseClipSec,
+        } = options;
         return new Promise((resolve) => {
           if (!mixer) {
             resolve(0);
             return;
           }
           proceduralActive.current = false;
+          pendingReleaseRef.current = null;
           const resolved = resolveClipName(actionsRef.current, key);
           const next = resolved ? actionsRef.current[resolved] : undefined;
           if (!next) {
@@ -328,11 +348,18 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
           next.clampWhenFinished = true;
           next.setEffectiveTimeScale(timeScale);
           next.setEffectiveWeight(1);
-          next.fadeIn(fade).play();
+          if (fade > 0) {
+            next.fadeIn(fade).play();
+          } else {
+            next.play();
+          }
           currentAction.current = next;
 
           if (onRelease) {
-            gsap.delayedCall(clipDuration * releaseFraction, onRelease);
+            const atClipSec =
+              releaseClipSec ??
+              next.getClip().duration * releaseFraction;
+            pendingReleaseRef.current = { action: next, atClipSec, cb: onRelease };
           }
 
           let settled = false;
@@ -353,6 +380,7 @@ export const GlbPlayerModel = forwardRef<GlbPlayerModelHandle, GlbPlayerModelPro
         });
       },
       stopClips: () => {
+        pendingReleaseRef.current = null;
         mixer?.stopAllAction();
         currentAction.current = null;
       },
