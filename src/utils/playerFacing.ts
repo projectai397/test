@@ -50,11 +50,11 @@ export function bowlerFacingTowardStriker(_modelUrl?: string): number {
 
 /**
  * Meshy baseball_pitching releases along model +X. With the outer group at towardStriker
- * (−π/2), that axis points at mid-off (+Z). Add π/2 on the inner model group so the
- * release line aligns down the pitch toward the batsman.
+ * (−π/2), that axis points at mid-off (+Z). Add −π/2 on the inner model group so the
+ * release line aligns down the pitch toward the batsman (−X).
  */
 export function meshyBowlerDeliveryInnerRotation(modelUrl?: string): number {
-  return modelUrl && isMeshyBowlerUrl(modelUrl) ? Math.PI / 2 : 0;
+  return modelUrl && isMeshyBowlerUrl(modelUrl) ? -Math.PI / 2 : 0;
 }
 
 export const PITCH_FACING = {
