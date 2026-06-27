@@ -28,7 +28,7 @@ interface BatterControllerProps {
 }
 
 function setBatterHome(group: THREE.Group) {
-  group.position.set(scenePositions.strikerEndX, 0, 0);
+  group.position.set(scenePositions.batterStrikerX, 0, 0);
   group.rotation.set(0, PITCH_FACING.towardBowler, 0);
 }
 
