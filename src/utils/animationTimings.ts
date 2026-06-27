@@ -18,7 +18,7 @@ export const scenePositions = {
   /** Striker / batter end of the pitch (wickets at x=0). */
   strikerEndX: 0,
   /** Striker batsman — in front of the stumps, toward the popping crease (+X). */
-  batterStrikerX: 0.95,
+  batterStrikerX: 1.1,
   /** Non-striker end — same end as the bowler (wickets at x=pitchLength). */
   nonStrikerEndX: 20.12,
   pitchWidth: 3.05,

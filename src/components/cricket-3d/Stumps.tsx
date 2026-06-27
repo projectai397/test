@@ -53,7 +53,7 @@ export const Stumps = forwardRef<StumpsHandle, StumpsProps>(function Stumps(
     },
   }));
 
-  /** Stumps in a row across the pitch (perpendicular to pitch length along +X). */
+  /** Stumps in a row across the pitch (along Z), on the bowling crease at constant X. */
   const stumpPositions: [number, number, number][] = [
     [0, STUMP_HEIGHT / 2, -STUMP_SPREAD],
     [0, STUMP_HEIGHT / 2, 0],

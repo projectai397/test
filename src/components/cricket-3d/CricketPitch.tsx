@@ -80,8 +80,8 @@ export function CricketPitch() {
         />
       </mesh>
 
-      <EndCreases stumpX={0} towardCenter={1} />
-      <EndCreases stumpX={pitchLength} towardCenter={-1} />
+      <EndCreases stumpX={scenePositions.strikerEndX} towardCenter={1} />
+      <EndCreases stumpX={scenePositions.nonStrikerEndX} towardCenter={-1} />
     </group>
   );
 }

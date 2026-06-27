@@ -122,8 +122,8 @@ function CricketScene({
       <CricketPitch />
       <StadiumEnvironment />
 
-      <Stumps ref={stumpsRef} position={[scenePositions.strikerEndX, 0, 0]} />
-      <Stumps position={[scenePositions.nonStrikerEndX, 0, 0]} />
+      <Stumps key="striker-end" ref={stumpsRef} position={[scenePositions.strikerEndX, 0, 0]} />
+      <Stumps key="bowler-end" position={[scenePositions.nonStrikerEndX, 0, 0]} />
 
       <BowlerController
         ref={bowlerRef}
