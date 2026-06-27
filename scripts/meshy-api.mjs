@@ -47,8 +47,33 @@ const HEX_TO_NAME = {
   '#9333ea': 'purple',
   '#ffffff': 'white',
   '#1a1a1a': 'black',
+  '#171717': 'black',
   '#f97316': 'orange',
+  '#1e3a8a': 'navy blue',
+  '#0ea5e9': 'sky blue',
+  '#ec4899': 'pink',
+  '#991b1b': 'maroon',
+  '#ca8a04': 'gold',
 };
+
+/** Plain kit shirts — all use black trousers. ~24 Meshy credits each. */
+const MAJOR_PLAIN_KITS = [
+  { name: 'red', shirt: '#dc2626' },
+  { name: 'blue', shirt: '#2563eb' },
+  { name: 'green', shirt: '#16a34a' },
+  { name: 'yellow', shirt: '#eab308' },
+  { name: 'orange', shirt: '#f97316' },
+  { name: 'purple', shirt: '#9333ea' },
+  { name: 'white', shirt: '#ffffff' },
+  { name: 'navy', shirt: '#1e3a8a' },
+  { name: 'sky', shirt: '#0ea5e9' },
+  { name: 'pink', shirt: '#ec4899' },
+  { name: 'maroon', shirt: '#991b1b' },
+  { name: 'gold', shirt: '#ca8a04' },
+  { name: 'black', shirt: '#171717' },
+];
+
+const PLAIN_TROUSERS = '#1a1a1a';
 
 async function loadApiKey() {
   if (process.env.MESHY_API_KEY) return process.env.MESHY_API_KEY.trim();
@@ -173,10 +198,88 @@ function buildKitPrompt(shirtHex, trouserHex) {
   const shirt = hexToPromptName(shirtHex);
   const trousers = hexToPromptName(trouserHex);
   return (
-    `realistic male cricket player, ${shirt} short-sleeve cricket jersey, ` +
-    `${trousers} cricket trousers, white athletic shoes, natural skin tone and hair, ` +
-    `photorealistic sports kit, no logos`
+    `realistic male cricket player, plain solid ${shirt} short-sleeve t-shirt, ` +
+    `plain solid ${trousers} cricket trousers, white athletic shoes, natural skin tone and hair, ` +
+    `minimalist blank sports kit, uniform flat color clothes only, ` +
+    `no logos, no badges, no text, no brand marks, no stripes, no patterns, no emblems, no sponsor prints`
   );
+}
+
+async function readKitManifest() {
+  const kitManifestPath = join(root, 'public', 'models', 'meshy-kit-manifest.json');
+  if (!existsSync(kitManifestPath)) return { variants: [], defaultBowlerUrl: undefined };
+  try {
+    return JSON.parse(await readFile(kitManifestPath, 'utf8'));
+  } catch {
+    return { variants: [] };
+  }
+}
+
+async function writeKitManifestEntry({ shirt, trousers, hash, outputRel, generatedAt }) {
+  const kitManifestPath = join(root, 'public', 'models', 'meshy-kit-manifest.json');
+  const kitManifest = await readKitManifest();
+  const existing = (kitManifest.variants ?? []).filter((v) => v.kitHash !== hash);
+  existing.push({
+    kitHash: hash,
+    shirt,
+    trousers,
+    modelUrl: outputRel,
+    generatedAt,
+  });
+  kitManifest.variants = existing;
+  if (!kitManifest.defaultBowlerUrl) kitManifest.defaultBowlerUrl = outputRel;
+  await writeFile(kitManifestPath, JSON.stringify(kitManifest, null, 2));
+}
+
+/** Build one plain kit variant (retexture → rig → animate → merge). */
+async function buildOneKitVariant({ shirt, trousers, sourcePath, quiet = false }) {
+  const hash = kitHash(shirt, trousers);
+  const prompt = buildKitPrompt(shirt, trousers);
+  const outDir = join(root, 'public', 'models', 'meshy-generated');
+  const modelsDir = join(root, 'public', 'models');
+  await mkdir(outDir, { recursive: true });
+
+  const retexturedPath = join(outDir, `retextured-${hash}.glb`);
+  const runningPath = join(outDir, `running-${hash}.glb`);
+  const walkingPath = join(outDir, `walking-${hash}.glb`);
+  const pitchPath = join(outDir, `pitch-${hash}.glb`);
+  const outputRel = `/models/meshy-bowler-${hash}.glb`;
+  const outputPath = join(modelsDir, `meshy-bowler-${hash}.glb`);
+
+  const log = (...a) => {
+    if (!quiet) console.log(...a);
+  };
+
+  log('\n[1/5] Retexture (10 credits) …');
+  const { glbUrl: retextureUrl } = await cmdRetexture(sourcePath, prompt, { quiet: true });
+  await downloadFile(retextureUrl, retexturedPath);
+  log('Saved', retexturedPath);
+
+  log('\n[2/5] Rig (5 credits) …');
+  const rigTask = await cmdRig(retexturedPath, { quiet: true });
+  const rigId = rigTask.id;
+  const basic = rigTask.result?.basic_animations ?? {};
+  if (!basic.running_glb_url || !basic.walking_glb_url) {
+    throw new Error('Rig task missing basic running/walking GLB URLs');
+  }
+
+  log('\n[3/5] Download run + walk …');
+  await downloadFile(basic.running_glb_url, runningPath);
+  await downloadFile(basic.walking_glb_url, walkingPath);
+
+  log('\n[4/5] Animate pitch (3 credits) …');
+  const pitchTask = await cmdAnimate(rigId, MESHY_BOWLER_ACTIONS.baseballPitching, { quiet: true });
+  const pitchUrl = pitchTask.result?.animation_glb_url;
+  if (!pitchUrl) throw new Error('Pitch animation task missing GLB URL');
+  await downloadFile(pitchUrl, pitchPath);
+
+  log('\n[5/5] Merge clips …');
+  await mergeMeshyGlbs(runningPath, walkingPath, pitchPath, outputPath);
+
+  const generatedAt = new Date().toISOString();
+  await writeKitManifestEntry({ shirt, trousers, hash, outputRel, generatedAt });
+
+  return { hash, shirt, trousers, outputPath, outputRel, prompt, generatedAt, rigId };
 }
 
 async function loadMatchConfig() {
@@ -316,7 +419,7 @@ async function cmdBuildBowler(glbPath) {
   console.log('Use public/models/meshy-bowler.glb (merged) or wire separate clips in config.');
 }
 
-async function cmdKitBowler(sourceGlbPath) {
+async function cmdKitBowler(sourceGlbPath, shirtOverride, trouserOverride) {
   const sourcePath = sourceGlbPath ?? DEFAULT_CHARACTER;
   if (!existsSync(sourcePath)) {
     throw new Error(
@@ -330,102 +433,145 @@ async function cmdKitBowler(sourceGlbPath) {
     console.warn(`Warning: balance ${balance} may be insufficient (~24 credits per kit variant)`);
   }
 
-  const { shirt, trousers } = await loadMatchConfig();
+  let shirt;
+  let trousers;
+  if (shirtOverride && HEX_COLOR.test(shirtOverride)) {
+    shirt = shirtOverride;
+    trousers = trouserOverride && HEX_COLOR.test(trouserOverride) ? trouserOverride : PLAIN_TROUSERS;
+  } else {
+    const cfg = await loadMatchConfig();
+    shirt = cfg.shirt;
+    trousers = cfg.trousers;
+  }
+
   const hash = kitHash(shirt, trousers);
-  const prompt = buildKitPrompt(shirt, trousers);
-
-  console.log('\nKit colours:', { shirt, trousers, hash });
-  console.log('Prompt:', prompt);
-  console.log('Source:', sourcePath);
-
-  const outDir = join(root, 'public', 'models', 'meshy-generated');
   const modelsDir = join(root, 'public', 'models');
-  await mkdir(outDir, { recursive: true });
-
-  const retexturedPath = join(outDir, `retextured-${hash}.glb`);
-  const runningPath = join(outDir, `running-${hash}.glb`);
-  const walkingPath = join(outDir, `walking-${hash}.glb`);
-  const pitchPath = join(outDir, `pitch-${hash}.glb`);
-  const outputRel = `/models/meshy-bowler-${hash}.glb`;
   const outputPath = join(modelsDir, `meshy-bowler-${hash}.glb`);
 
-  console.log('\n[1/5] Retexture (10 credits) …');
-  const { glbUrl: retextureUrl } = await cmdRetexture(sourcePath, prompt, { quiet: true });
-  await downloadFile(retextureUrl, retexturedPath);
-  console.log('Saved', retexturedPath);
-
-  console.log('\n[2/5] Rig (5 credits) …');
-  const rigTask = await cmdRig(retexturedPath, { quiet: true });
-  const rigId = rigTask.id;
-  const basic = rigTask.result?.basic_animations ?? {};
-
-  if (!basic.running_glb_url || !basic.walking_glb_url) {
-    throw new Error('Rig task missing basic running/walking GLB URLs');
+  if (existsSync(outputPath)) {
+    console.log(`Already built: ${outputPath} — skip or delete to rebuild`);
+    return;
   }
 
-  console.log('\n[3/5] Download run + walk …');
-  await downloadFile(basic.running_glb_url, runningPath);
-  await downloadFile(basic.walking_glb_url, walkingPath);
-  console.log('Saved', runningPath, walkingPath);
+  console.log('\nKit colours:', { shirt, trousers, hash });
+  console.log('Prompt:', buildKitPrompt(shirt, trousers));
+  console.log('Source:', sourcePath);
 
-  console.log('\n[4/5] Animate pitch (3 credits) …');
-  const pitchTask = await cmdAnimate(rigId, MESHY_BOWLER_ACTIONS.baseballPitching, { quiet: true });
-  const pitchUrl = pitchTask.result?.animation_glb_url;
-  if (!pitchUrl) throw new Error('Pitch animation task missing GLB URL');
-  await downloadFile(pitchUrl, pitchPath);
-  console.log('Saved', pitchPath);
-
-  console.log('\n[5/5] Merge clips …');
-  await mergeMeshyGlbs(runningPath, walkingPath, pitchPath, outputPath);
-  console.log('Saved', outputPath);
-
-  const manifest = {
-    sourceGlb: sourcePath,
-    rigTaskId: rigId,
-    kitColors: { shirt, trousers },
-    kitHash: hash,
-    outputUrl: outputRel,
-    prompt,
-    generatedAt: new Date().toISOString(),
-    actions: MESHY_BOWLER_ACTIONS,
-    files: {
-      retextured: retexturedPath,
-      running: runningPath,
-      walking: walkingPath,
-      pitch: pitchPath,
-      merged: outputPath,
-    },
-  };
-  const manifestPath = join(outDir, 'manifest.json');
-  await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
-
-  const kitManifestPath = join(modelsDir, 'meshy-kit-manifest.json');
-  let kitManifest = { variants: [] };
-  if (existsSync(kitManifestPath)) {
-    try {
-      kitManifest = JSON.parse(await readFile(kitManifestPath, 'utf8'));
-    } catch {
-      kitManifest = { variants: [] };
-    }
-  }
-  const existing = kitManifest.variants.filter((v) => v.kitHash !== hash);
-  existing.push({
-    kitHash: hash,
-    shirt,
-    trousers,
-    modelUrl: outputRel,
-    generatedAt: manifest.generatedAt,
-  });
-  kitManifest.variants = existing;
-  kitManifest.defaultBowlerUrl = outputRel;
-  await writeFile(kitManifestPath, JSON.stringify(kitManifest, null, 2));
+  const result = await buildOneKitVariant({ shirt, trousers, sourcePath });
+  const manifestPath = join(root, 'public', 'models', 'meshy-generated', 'manifest.json');
+  await writeFile(
+    manifestPath,
+    JSON.stringify(
+      {
+        sourceGlb: sourcePath,
+        rigTaskId: result.rigId,
+        kitColors: { shirt, trousers },
+        kitHash: hash,
+        outputUrl: result.outputRel,
+        prompt: result.prompt,
+        generatedAt: result.generatedAt,
+        actions: MESHY_BOWLER_ACTIONS,
+      },
+      null,
+      2,
+    ),
+  );
 
   console.log('\nDone.');
-  console.log('  Merged GLB:', outputPath);
-  console.log('  Manifest:', manifestPath);
-  console.log('  Kit manifest:', kitManifestPath);
-  console.log('  App URL:', outputRel);
-  console.log('\nRefresh the app — bowler loads this GLB when kit colours match config.json.');
+  console.log('  Merged GLB:', result.outputPath);
+  console.log('  App URL:', result.outputRel);
+}
+
+async function cmdPrebuildAllKits(sourceGlbPath, { force = false, dryRun = false } = {}) {
+  const sourcePath = sourceGlbPath ?? DEFAULT_CHARACTER;
+  if (!existsSync(sourcePath)) {
+    throw new Error(`Source GLB not found: ${sourcePath}`);
+  }
+
+  const modelsDir = join(root, 'public', 'models');
+  const toBuild = [];
+  const skipped = [];
+
+  for (const kit of MAJOR_PLAIN_KITS) {
+    const shirt = kit.shirt;
+    const trousers = PLAIN_TROUSERS;
+    const hash = kitHash(shirt, trousers);
+    const outputPath = join(modelsDir, `meshy-bowler-${hash}.glb`);
+    if (existsSync(outputPath) && !force) {
+      skipped.push({ name: kit.name, hash, outputPath });
+      await writeKitManifestEntry({
+        shirt,
+        trousers,
+        hash,
+        outputRel: `/models/meshy-bowler-${hash}.glb`,
+        generatedAt: new Date().toISOString(),
+      });
+      continue;
+    }
+    toBuild.push({ name: kit.name, shirt, trousers, hash });
+  }
+
+  console.log(`\nPlain kit prebuild — ${MAJOR_PLAIN_KITS.length} major colors`);
+  console.log(`  Skip (exists): ${skipped.length}`);
+  console.log(`  To build:      ${toBuild.length}`);
+  console.log(`  Est. credits:  ~${toBuild.length * 24}\n`);
+
+  if (skipped.length) {
+    console.log('Skipped (already on disk):');
+    for (const s of skipped) console.log(`  ${s.name} (${s.hash})`);
+  }
+
+  if (dryRun) {
+    console.log('\nWould build:');
+    for (const k of toBuild) {
+      console.log(`  ${k.name} ${k.shirt} + ${k.trousers} → meshy-bowler-${k.hash}.glb`);
+      console.log(`    ${buildKitPrompt(k.shirt, k.trousers)}`);
+    }
+    return;
+  }
+
+  if (toBuild.length === 0) {
+    console.log('\nAll major kits already built.');
+    return;
+  }
+
+  const balance = await cmdBalance();
+  const needed = toBuild.length * 24;
+  if (balance < needed) {
+    console.warn(`Warning: balance ${balance} < estimated ${needed} credits needed`);
+  }
+
+  const results = [];
+  const failures = [];
+
+  for (let i = 0; i < toBuild.length; i++) {
+    const k = toBuild[i];
+    console.log(`\n========== [${i + 1}/${toBuild.length}] ${k.name.toUpperCase()} ${k.shirt} ==========`);
+    console.log('Prompt:', buildKitPrompt(k.shirt, k.trousers));
+    try {
+      const result = await buildOneKitVariant({ shirt: k.shirt, trousers: k.trousers, sourcePath });
+      results.push({ name: k.name, ...result });
+      console.log(`✓ ${k.name} → ${result.outputRel}`);
+    } catch (err) {
+      failures.push({ name: k.name, hash: k.hash, error: err.message ?? String(err) });
+      console.error(`✗ ${k.name} failed:`, err.message ?? err);
+    }
+  }
+
+  console.log('\n========== PREBUILD SUMMARY ==========');
+  console.log(`Built:   ${results.length}`);
+  console.log(`Failed:  ${failures.length}`);
+  console.log(`Skipped: ${skipped.length}`);
+  if (results.length) {
+    console.log('\nNew models:');
+    for (const r of results) console.log(`  ${r.name}: ${r.outputRel}`);
+  }
+  if (failures.length) {
+    console.log('\nFailures:');
+    for (const f of failures) console.log(`  ${f.name} (${f.hash}): ${f.error}`);
+  }
+  console.log('\nManifest: public/models/meshy-kit-manifest.json');
+  console.log('Switch kit in config.json → refresh app (no rebuild needed if variant exists).');
 }
 
 async function main() {
@@ -462,8 +608,15 @@ async function main() {
       await cmdBuildBowler(args[0]);
       break;
     case 'kit-bowler':
-      await cmdKitBowler(args[0]);
+      await cmdKitBowler(args[0], args[1], args[2]);
       break;
+    case 'prebuild-kits': {
+      const force = args.includes('--force');
+      const dryRun = args.includes('--dry-run');
+      const glb = args.find((a) => a.endsWith('.glb'));
+      await cmdPrebuildAllKits(glb, { force, dryRun });
+      break;
+    }
     default:
       console.log(`Meshy API helper
 
@@ -474,7 +627,8 @@ Commands:
   rig [glb]            Rig a character GLB (data URI upload)
   animate <rig> <id>   Apply animation to rigged character
   build-bowler [glb]   Rig + download run/walk/pitch GLBs
-  kit-bowler [glb]     Retexture + rig + animate + merge from config.json (~24 credits)
+  kit-bowler [glb] [shirt] [trousers]  One kit from config or hex colours
+  prebuild-kits [glb] [--dry-run] [--force]  All major plain kit colours (~24 cr each)
 
 Preset action IDs:
   Running: ${MESHY_BOWLER_ACTIONS.running}

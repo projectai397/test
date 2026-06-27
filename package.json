@@ -16,6 +16,7 @@
     "meshy:build-bowler": "node scripts/meshy-api.mjs build-bowler",
     "meshy:retexture": "node scripts/meshy-api.mjs retexture",
     "meshy:kit-bowler": "node scripts/meshy-api.mjs kit-bowler",
+    "meshy:prebuild-kits": "node scripts/meshy-api.mjs prebuild-kits",
     "install:umpire": "node scripts/install-umpire.mjs",
     "validate:models": "node scripts/validate-models.mjs"
   },
